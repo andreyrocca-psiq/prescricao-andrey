@@ -1,0 +1,1349 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescrição Digital Inteligente</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                        },
+                        apple: {
+                            bg: '#f5f5f7',
+                            card: '#fbfbfd',
+                            text: '#1d1d1f',
+                            secondary: '#6e6e73',
+                            blue: '#0071e3',
+                            bluehover: '#0077ed',
+                            border: '#d2d2d7',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        '2xl': '18px',
+                        '3xl': '22px',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- System font stack (Apple SF Pro) - no external font needed -->
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- jsPDF para geração de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+
+    <style>
+        * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Apple glass effect */
+        .apple-glass {
+            background-color: rgba(255, 255, 255, 0.72);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+        }
+
+        /* Smooth inputs */
+        input, select, textarea {
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #0071e3 !important;
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15) !important;
+        }
+
+        /* Apple button style */
+        .apple-btn {
+            background: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 980px;
+            padding: 12px 24px;
+            font-size: 17px;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.15s ease;
+        }
+        .apple-btn:hover { background: #0077ed; }
+        .apple-btn:active { transform: scale(0.98); }
+        .apple-btn:disabled { background: #d2d2d7; cursor: not-allowed; }
+
+        /* ===== ESTILOS DE IMPRESSÃO ===== */
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            body {
+                background-color: white !important;
+                margin: 0;
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-area {
+                display: block !important;
+                position: static !important;
+            }
+            .print-area .a4-page {
+                width: 210mm;
+                height: 297mm;
+                padding: 20mm;
+                margin: 0;
+                box-shadow: none !important;
+                border: none !important;
+                page-break-after: always;
+                page-break-inside: avoid;
+                background: white;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            .print-area .a4-page:last-child {
+                page-break-after: auto;
+            }
+        }
+
+        @media screen {
+            .print-area {
+                display: none !important;
+            }
+        }
+
+        /* Estilo da página na tela (Preview) */
+        .a4-preview {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 20mm;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            border-radius: 18px;
+            margin: 0 auto 2rem auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        /* Campos de controle especial */
+        .box-controle {
+            border: 1px solid #1d1d1f;
+            padding: 8px;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        // Ícones SVG reutilizáveis
+        const Icons = {
+            Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
+            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
+            Printer: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>,
+            Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>,
+            Copy: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>,
+            ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>,
+            ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>,
+            FileText: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>,
+            Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>,
+            Eraser: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.6 1.6c.8-.8 2-.8 2.8 0L21.4 5.6c.8.8.8 2 0 2.8L10 20"></path><path d="M6 12l6 6"></path></svg>,
+            Clipboard: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>,
+            Pill: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+        };
+
+        const CLINICS = {
+            EIXO: {
+                name: 'EIXO Neurologia Especializada',
+                phone: '(61) 99124-6115',
+                address: 'SGAS 610, Bloco 02, Salas 136 a 138\nCentro Médico Lúcio Costa – Plano Piloto\nBrasília – DF\nCEP 70200-700',
+                logo: 'eixo_logo.png'
+            },
+            NA: {
+                name: 'NA Neurologistas Associados',
+                phone: '(61) 3242-3060',
+                address: 'Centro Médico Júlio Adnet - SEPS 709/909 Bloco B, Sala 12\nAsa Sul, Brasília - DF\nCEP 70390-095',
+                logo: 'na_logo.png'
+            }
+        };
+
+        // ========================================
+        // Mock ANVISA - Dados de Medicamentos
+        // ========================================
+        const ANVISA_MEDICATIONS = [
+            { id: 1, principioAtivo: 'Levodopa + Benserazida', nomeComercial: 'Prolopa', apresentacao: '200/50mg comprimido', isControlled: false },
+            { id: 2, principioAtivo: 'Pramipexol', nomeComercial: 'Sifrol', apresentacao: '0,25mg comprimido', isControlled: false },
+            { id: 3, principioAtivo: 'Donepezila', nomeComercial: 'ErANZ', apresentacao: '10mg comprimido', isControlled: false },
+            { id: 4, principioAtivo: 'Quetiapina', nomeComercial: 'Seroquel', apresentacao: '25mg comprimido', isControlled: true },
+            { id: 5, principioAtivo: 'Toxina Botulínica A', nomeComercial: 'Botox', apresentacao: '100U frasco-ampola', isControlled: false },
+        ];
+
+        const searchAnvisaMedications = (query) => {
+            if (!query || query.length < 3) return [];
+            const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return ANVISA_MEDICATIONS.filter(med => {
+                const searchFields = [
+                    med.principioAtivo, med.nomeComercial, med.apresentacao
+                ].join(' ').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return searchFields.includes(q);
+            });
+        };
+
+        // ========================================
+        // Templates / Kits de Acesso Rápido
+        // ========================================
+        const TEMPLATE_KITS = [
+            {
+                id: 'atestado',
+                label: 'Atestado Médico',
+                icon: 'FileText',
+                title: 'Atestado Médico',
+                content: 'Atesto para os devidos fins que o(a) paciente acima identificado(a) esteve sob meus cuidados profissionais na data de hoje, necessitando de afastamento de suas atividades por ______ (______) dia(s), a partir desta data.\n\nCID: ________'
+            },
+            {
+                id: 'comparecimento',
+                label: 'Atestado de Comparecimento',
+                icon: 'Clipboard',
+                title: 'Atestado de Comparecimento',
+                content: 'Atesto para os devidos fins que o(a) paciente acima identificado(a) compareceu a esta clínica na data de hoje para consulta médica, permanecendo no local das ______ às ______ horas.'
+            },
+            {
+                id: 'acompanhamento',
+                label: 'Acompanhante',
+                icon: 'Clipboard',
+                title: 'Atestado de Acompanhamento',
+                content: 'Atesto para os devidos fins que ________________________________________, portador(a) do documento de identidade nº ______________________, esteve acompanhando o(a) paciente acima identificado(a) em consulta médica nesta clínica na data de hoje, permanecendo no local das ______ às ______ horas.'
+            },
+        ];
+
+        // Helper: data formatada
+        const formatDate = (hideDate) => {
+            if (hideDate) return "_____ de ________________ de 20____";
+            const date = new Date();
+            const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
+        };
+
+        // ========================================
+        // Componente de Página de Prescrição (A4)
+        // ========================================
+        const PrescriptionPage = ({ meds, freeTexts: pageFreeTexts, isControlled, via, hideDate, doctor, clinic, city, patient, forPrint }) => {
+            const pageClass = forPrint ? "a4-page" : "a4-preview";
+
+            return (
+                <div className={pageClass} style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                    <div>
+                        {/* Cabeçalho */}
+                        <div style={{ textAlign: 'center', borderBottom: '1.5px solid #d2d2d7', paddingBottom: '18px', marginBottom: '28px' }}>
+                            {clinic.logo ? (
+                                <React.Fragment>
+                                    <img src={clinic.logo} alt={clinic.name} style={{ maxHeight: '90px', margin: '0 auto 14px auto', display: 'block' }} />
+                                    <h1 style={{ fontSize: '16px', fontWeight: '600', color: '#1d1d1f', letterSpacing: '-0.01em' }}>{doctor.name}</h1>
+                                    <p style={{ fontSize: '12px', color: '#6e6e73', fontWeight: '400', marginTop: '3px' }}>{doctor.specialty} | {doctor.crm}</p>
+                                </React.Fragment>
+                            ) : (
+                                <React.Fragment>
+                                    <h1 style={{ fontSize: '16px', fontWeight: '600', color: '#1d1d1f', letterSpacing: '-0.01em' }}>{doctor.name}</h1>
+                                    <p style={{ fontSize: '12px', color: '#6e6e73', fontWeight: '400', marginTop: '3px' }}>{doctor.specialty} | {doctor.crm}</p>
+                                    <p style={{ fontSize: '11px', color: '#1d1d1f', marginTop: '10px', fontWeight: '600' }}>{clinic.name}</p>
+                                    <p style={{ fontSize: '10px', color: '#86868b', whiteSpace: 'pre-line', marginTop: '4px', lineHeight: '1.5' }}>{clinic.address}</p>
+                                    <p style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Tel: {clinic.phone}</p>
+                                </React.Fragment>
+                            )}
+                        </div>
+
+                        {/* Título da Receita (apenas controlados) */}
+                        {isControlled && (
+                            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                                <h2 style={{ fontSize: '17px', fontWeight: '600', color: '#1d1d1f', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                                    Receituário de Controle Especial
+                                </h2>
+                                <p style={{ fontSize: '13px', fontWeight: '500', color: '#6e6e73', marginTop: '4px' }}>
+                                    {via === 1 ? "1ª VIA - RETENÇÃO DA FARMÁCIA" : "2ª VIA - ORIENTAÇÃO AO PACIENTE"}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Paciente */}
+                        <div style={{ marginBottom: '28px' }}>
+                            <p style={{ fontSize: '16px', color: '#1d1d1f', borderBottom: '1px solid #d2d2d7', paddingBottom: '6px' }}>
+                                <span style={{ fontWeight: '600' }}>Paciente:</span>{' '}
+                                {patient.name || <span style={{ color: '#d2d2d7', fontStyle: 'italic' }}>Nome do paciente...</span>}
+                            </p>
+                            {patient.cpf && (
+                                <p style={{ fontSize: '13px', color: '#1d1d1f', borderBottom: '1px solid #d2d2d7', paddingBottom: '6px', marginTop: '10px' }}>
+                                    <span style={{ fontWeight: '600' }}>CPF:</span>{' '}{patient.cpf}
+                                </p>
+                            )}
+                            {isControlled && (
+                                <p style={{ fontSize: '13px', color: '#1d1d1f', borderBottom: '1px solid #d2d2d7', paddingBottom: '6px', marginTop: '10px' }}>
+                                    <span style={{ fontWeight: '600' }}>Endereço:</span>{' '}
+                                    {patient.address || <span style={{ color: '#d2d2d7', fontStyle: 'italic' }}>Endereço completo...</span>}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Medicamentos */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                            {meds.map((med, index) => (
+                                <div key={med.id || index} style={{ paddingLeft: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
+                                        <span style={{ fontWeight: '600', color: '#1d1d1f', fontSize: '16px' }}>{index + 1}.</span>
+                                        <span style={{ fontWeight: '600', color: '#1d1d1f', fontSize: '16px' }}>{med.name}</span>
+                                    </div>
+                                    <div style={{ paddingLeft: '22px', color: '#424245', whiteSpace: 'pre-line', fontSize: '15px', lineHeight: '1.5' }}>
+                                        <span style={{ fontWeight: '500', color: '#0071e3', fontStyle: 'italic', display: 'block', marginBottom: '3px', fontSize: '13px' }}>{med.route}</span>
+                                        {med.instructions || <span style={{ color: '#d2d2d7', fontStyle: 'italic' }}>Instruções de uso...</span>}
+                                    </div>
+                                </div>
+                            ))}
+                            {meds.length === 0 && (!pageFreeTexts || pageFreeTexts.length === 0) && (
+                                <p style={{ color: '#86868b', fontStyle: 'italic', textAlign: 'center', margin: '40px 0', fontSize: '14px' }}>Os medicamentos adicionados aparecerão aqui.</p>
+                            )}
+                        </div>
+
+                        {/* Texto Livre */}
+                        {pageFreeTexts && pageFreeTexts.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: meds.length > 0 ? '28px' : '0' }}>
+                                {pageFreeTexts.map((ft, index) => (
+                                    <div key={ft.id || index}>
+                                        {ft.title && (
+                                            <p style={{ fontWeight: '600', color: '#1d1d1f', fontSize: '16px', marginBottom: '10px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                                {ft.title}
+                                            </p>
+                                        )}
+                                        <div style={{ color: '#424245', whiteSpace: 'pre-line', fontSize: '15px', lineHeight: '1.6', paddingLeft: '12px' }}>
+                                            {ft.content}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Rodapé */}
+                    <div style={{ marginTop: 'auto', paddingTop: '28px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginBottom: '28px' }}>
+                            <div style={{ borderTop: '1px solid #1d1d1f', width: '240px', textAlign: 'center', paddingTop: '10px' }}>
+                                <p style={{ fontWeight: '600', color: '#1d1d1f', fontSize: '13px' }}>{doctor.name}</p>
+                                <p style={{ fontSize: '11px', color: '#6e6e73', marginTop: '2px' }}>{doctor.crm}</p>
+                            </div>
+                            <p style={{ fontSize: '13px', color: '#6e6e73', marginTop: '16px' }}>
+                                {city}, {formatDate(hideDate)}
+                            </p>
+                        </div>
+
+                        {/* Caixas Anvisa para controlados */}
+                        {isControlled && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1.5px solid #d2d2d7', paddingTop: '16px' }}>
+                                <div className="box-controle">
+                                    <h4 style={{ fontWeight: '600', textAlign: 'center', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px', marginBottom: '8px', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.04em' }}>Identificação do Comprador</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Nome:</p>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>
+                                            <p>RG:</p>
+                                            <p>Órgão Emissor:</p>
+                                        </div>
+                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Endereço:</p>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>
+                                            <p>Cidade / UF:</p>
+                                            <p>Telefone:</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="box-controle" style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <h4 style={{ fontWeight: '600', textAlign: 'center', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px', marginBottom: '8px', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.04em' }}>Identificação do Fornecedor</h4>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #d2d2d7', marginBottom: '8px' }}>
+                                        <p style={{ color: '#86868b', fontStyle: 'italic' }}>Carimbo da Farmácia</p>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Data:</p>
+                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Assinatura:</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ========================================
+        // Lógica de Geração de Páginas
+        // ========================================
+        const generatePages = (medications, freeTextBlocks, separatePrescriptions) => {
+            const validMeds = medications.filter(m => m.name.trim() !== '');
+            const validFreeTexts = (freeTextBlocks || []).filter(ft => ft.content.trim() !== '');
+            const pages = [];
+
+            if (validMeds.length === 0 && validFreeTexts.length === 0) {
+                pages.push({
+                    id: 'empty',
+                    isControlled: false,
+                    hideDate: false,
+                    via: null,
+                    copyIndex: 1,
+                    totalCopies: 1,
+                    meds: [],
+                    freeTexts: [],
+                    isEmpty: true
+                });
+                return pages;
+            }
+
+            // Agrupa por: controlado/não-controlado × com data/sem data
+            const groupKeys = [];
+            validMeds.forEach(med => {
+                const key = `${med.isControlled ? 'C' : 'N'}_${med.hideDate ? 'H' : 'D'}`;
+                if (!groupKeys.includes(key)) groupKeys.push(key);
+            });
+
+            let pageIdCounter = 0;
+
+            // Função para dividir array em chunks
+            const chunkArray = (arr, size) => {
+                const chunks = [];
+                for (let i = 0; i < arr.length; i += size) {
+                    chunks.push(arr.slice(i, i + size));
+                }
+                return chunks;
+            };
+
+            groupKeys.forEach(key => {
+                const isControlled = key.startsWith('C');
+                const hideDate = key.endsWith('H');
+
+                const groupMeds = validMeds.filter(
+                    m => m.isControlled === isControlled && m.hideDate === hideDate
+                );
+
+                if (groupMeds.length === 0) return;
+
+                const maxCopies = Math.max(...groupMeds.map(m => Math.max(1, parseInt(m.copies) || 1)));
+
+                for (let copyNum = 1; copyNum <= maxCopies; copyNum++) {
+                    const medsForCopy = groupMeds.filter(m => (Math.max(1, parseInt(m.copies) || 1)) >= copyNum);
+                    if (medsForCopy.length === 0) continue;
+
+                    // Determina tamanho máximo por página
+                    let maxPerPage;
+                    if (separatePrescriptions) {
+                        maxPerPage = 1;
+                    } else if (isControlled) {
+                        maxPerPage = 3;
+                    } else {
+                        maxPerPage = medsForCopy.length; // sem limite para simples
+                    }
+
+                    const chunks = chunkArray(medsForCopy, maxPerPage);
+
+                    chunks.forEach(chunk => {
+                        if (isControlled) {
+                            pages.push({
+                                id: `page-${pageIdCounter++}`,
+                                isControlled: true,
+                                hideDate,
+                                via: 1,
+                                copyIndex: copyNum,
+                                totalCopies: maxCopies,
+                                meds: chunk,
+                                freeTexts: [],
+                                isEmpty: false
+                            });
+                            pages.push({
+                                id: `page-${pageIdCounter++}`,
+                                isControlled: true,
+                                hideDate,
+                                via: 2,
+                                copyIndex: copyNum,
+                                totalCopies: maxCopies,
+                                meds: chunk,
+                                freeTexts: [],
+                                isEmpty: false
+                            });
+                        } else {
+                            pages.push({
+                                id: `page-${pageIdCounter++}`,
+                                isControlled: false,
+                                hideDate,
+                                via: null,
+                                copyIndex: copyNum,
+                                totalCopies: maxCopies,
+                                meds: chunk,
+                                freeTexts: [],
+                                isEmpty: false
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Cada texto livre em uma página separada
+            validFreeTexts.forEach(ft => {
+                pages.push({
+                    id: `page-freetext-${pageIdCounter++}`,
+                    isControlled: false,
+                    hideDate: false,
+                    via: null,
+                    copyIndex: 1,
+                    totalCopies: 1,
+                    meds: [],
+                    freeTexts: [ft],
+                    isEmpty: false
+                });
+            });
+
+            return pages;
+        };
+
+        // ========================================
+        // Componente de Busca de Medicamento (Typeahead)
+        // ========================================
+        const MedicationSearch = ({ onSelect }) => {
+            const [query, setQuery] = useState('');
+            const [results, setResults] = useState([]);
+            const [showDropdown, setShowDropdown] = useState(false);
+            const inputRef = React.useRef(null);
+            const dropdownRef = React.useRef(null);
+
+            useEffect(() => {
+                if (query.length >= 3) {
+                    const found = searchAnvisaMedications(query);
+                    setResults(found);
+                    setShowDropdown(found.length > 0);
+                } else {
+                    setResults([]);
+                    setShowDropdown(false);
+                }
+            }, [query]);
+
+            useEffect(() => {
+                const handleClickOutside = (e) => {
+                    if (dropdownRef.current && !dropdownRef.current.contains(e.target) &&
+                        inputRef.current && !inputRef.current.contains(e.target)) {
+                        setShowDropdown(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
+
+            const handleSelect = (med) => {
+                onSelect(med);
+                setQuery('');
+                setResults([]);
+                setShowDropdown(false);
+            };
+
+            return (
+                <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#86868b' }}>
+                            <Icons.Search />
+                        </div>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            placeholder="Buscar medicamento ANVISA (mín. 3 letras)..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
+                            className="w-full p-3 pl-10 rounded-xl outline-none text-sm"
+                            style={{ border: '1px solid #d2d2d7', color: '#1d1d1f', background: '#fbfbfd' }}
+                        />
+                    </div>
+                    {showDropdown && (
+                        <div
+                            ref={dropdownRef}
+                            style={{
+                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                                background: '#fff', border: '1px solid #d2d2d7', borderRadius: '12px',
+                                marginTop: '4px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                                maxHeight: '220px', overflowY: 'auto'
+                            }}
+                        >
+                            {results.map(med => (
+                                <button
+                                    key={med.id}
+                                    onClick={() => handleSelect(med)}
+                                    className="w-full text-left px-4 py-3 transition-colors"
+                                    style={{ borderBottom: '1px solid #f0f0f2', color: '#1d1d1f' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f7'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span style={{ color: '#0071e3' }}><Icons.Pill /></span>
+                                        <span className="font-semibold text-sm">{med.principioAtivo}</span>
+                                        <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: '#f5f5f7', color: '#6e6e73' }}>
+                                            {med.nomeComercial}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs mt-1" style={{ color: '#86868b', paddingLeft: '24px' }}>
+                                        {med.apresentacao}
+                                        {med.isControlled && <span style={{ color: '#e34040', fontWeight: '600', marginLeft: '8px' }}>Controlado</span>}
+                                    </p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // ========================================
+        // App Principal
+        // ========================================
+        const App = () => {
+            const [doctor, setDoctor] = useState({
+                name: 'Dr. Pedro Renato P. Brandão',
+                crm: 'CRM-DF 18853, RQE 11791',
+                specialty: 'Médico Neurologista'
+            });
+
+            const [selectedClinicId, setSelectedClinicId] = useState('EIXO');
+            const [city, setCity] = useState('Brasília');
+
+            const [patient, setPatient] = useState({
+                name: '',
+                cpf: '',
+                address: ''
+            });
+
+            const [medications, setMedications] = useState([
+                { id: 1, route: 'Uso Oral', name: '', instructions: '', isControlled: false, hideDate: false, copies: 1 }
+            ]);
+
+            const [freeTexts, setFreeTexts] = useState([]);
+
+            const [showDoctorSettings, setShowDoctorSettings] = useState(false);
+            const [separatePrescriptions, setSeparatePrescriptions] = useState(false);
+
+            const clinic = CLINICS[selectedClinicId];
+
+            // Gerar páginas com useMemo para evitar recalcular a cada render
+            const pages = useMemo(() => generatePages(medications, freeTexts, separatePrescriptions), [medications, freeTexts, separatePrescriptions]);
+
+            // Páginas para impressão (exclui vazias)
+            const printPages = useMemo(() => pages.filter(p => !p.isEmpty), [pages]);
+
+            const addMedication = useCallback(() => {
+                setMedications(prev => [...prev, { 
+                    id: Date.now(), route: 'Uso Oral', name: '', instructions: '', isControlled: false, hideDate: false, copies: 1 
+                }]);
+            }, []);
+
+            const removeMedication = useCallback((id) => {
+                setMedications(prev => prev.filter(m => m.id !== id));
+            }, []);
+
+            const addFreeText = useCallback(() => {
+                setFreeTexts(prev => [...prev, { id: Date.now(), title: '', content: '' }]);
+            }, []);
+
+            const removeFreeText = useCallback((id) => {
+                setFreeTexts(prev => prev.filter(ft => ft.id !== id));
+            }, []);
+
+            const updateFreeText = useCallback((id, field, value) => {
+                setFreeTexts(prev => prev.map(ft => ft.id === id ? { ...ft, [field]: value } : ft));
+            }, []);
+
+            const updateMedication = useCallback((id, field, value) => {
+                setMedications(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+            }, []);
+
+            // Mover medicamento na lista
+            const moveMedication = useCallback((id, direction) => {
+                setMedications(prev => {
+                    const idx = prev.findIndex(m => m.id === id);
+                    if (idx < 0) return prev;
+                    const newIdx = idx + direction;
+                    if (newIdx < 0 || newIdx >= prev.length) return prev;
+                    const copy = [...prev];
+                    [copy[idx], copy[newIdx]] = [copy[newIdx], copy[idx]];
+                    return copy;
+                });
+            }, []);
+
+            const handlePrint = () => {
+                window.print();
+            };
+
+            // Adicionar medicamento da busca ANVISA
+            const handleAddFromSearch = useCallback((anvisaMed) => {
+                const medName = `${anvisaMed.principioAtivo} (${anvisaMed.nomeComercial}) - ${anvisaMed.apresentacao}`;
+                setMedications(prev => [...prev, {
+                    id: Date.now(),
+                    route: 'Uso Oral',
+                    name: medName,
+                    instructions: '',
+                    isControlled: anvisaMed.isControlled,
+                    hideDate: false,
+                    copies: 1
+                }]);
+            }, []);
+
+            // Adicionar template de texto livre
+            const handleAddTemplate = useCallback((template) => {
+                setFreeTexts(prev => [...prev, {
+                    id: Date.now(),
+                    title: template.title,
+                    content: template.content
+                }]);
+            }, []);
+
+            // Limpar apenas receita (medicamentos e textos livres)
+            const handleClearContent = useCallback(() => {
+                setMedications([{ id: Date.now(), route: 'Uso Oral', name: '', instructions: '', isControlled: false, hideDate: false, copies: 1 }]);
+                setFreeTexts([]);
+            }, []);
+
+            // Limpar tudo (incluindo dados do paciente)
+            const handleClearAll = useCallback(() => {
+                setPatient({ name: '', cpf: '', address: '' });
+                setMedications([{ id: Date.now(), route: 'Uso Oral', name: '', instructions: '', isControlled: false, hideDate: false, copies: 1 }]);
+                setFreeTexts([]);
+            }, []);
+
+            // Baixar PDF com jsPDF
+            const handleDownloadPDF = useCallback(() => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const pageWidth = 210;
+                const margin = 20;
+                const contentWidth = pageWidth - 2 * margin;
+                let isFirstPage = true;
+
+                printPages.forEach((page) => {
+                    if (!isFirstPage) doc.addPage();
+                    isFirstPage = false;
+
+                    let y = margin;
+
+                    // Cabeçalho
+                    doc.setFontSize(14);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(doctor.name, pageWidth / 2, y, { align: 'center' });
+                    y += 6;
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`${doctor.specialty} | ${doctor.crm}`, pageWidth / 2, y, { align: 'center' });
+                    y += 5;
+                    doc.setFontSize(9);
+                    doc.text(clinic.name, pageWidth / 2, y, { align: 'center' });
+                    y += 4;
+                    const addressLines = clinic.address.split('\n');
+                    addressLines.forEach(line => {
+                        doc.text(line.trim(), pageWidth / 2, y, { align: 'center' });
+                        y += 3.5;
+                    });
+                    doc.text(`Tel: ${clinic.phone}`, pageWidth / 2, y, { align: 'center' });
+                    y += 6;
+
+                    // Linha separadora
+                    doc.setDrawColor(210, 210, 215);
+                    doc.line(margin, y, pageWidth - margin, y);
+                    y += 8;
+
+                    // Título controlado
+                    if (page.isControlled) {
+                        doc.setFontSize(13);
+                        doc.setFont(undefined, 'bold');
+                        doc.text('RECEITUÁRIO DE CONTROLE ESPECIAL', pageWidth / 2, y, { align: 'center' });
+                        y += 6;
+                        doc.setFontSize(10);
+                        doc.setFont(undefined, 'normal');
+                        doc.text(
+                            page.via === 1 ? '1ª VIA - RETENÇÃO DA FARMÁCIA' : '2ª VIA - ORIENTAÇÃO AO PACIENTE',
+                            pageWidth / 2, y, { align: 'center' }
+                        );
+                        y += 10;
+                    }
+
+                    // Paciente
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('Paciente: ', margin, y);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(patient.name || '___________________________', margin + doc.getTextWidth('Paciente: '), y);
+                    y += 6;
+                    if (patient.cpf) {
+                        doc.setFont(undefined, 'bold');
+                        doc.text('CPF: ', margin, y);
+                        doc.setFont(undefined, 'normal');
+                        doc.text(patient.cpf, margin + doc.getTextWidth('CPF: '), y);
+                        y += 6;
+                    }
+                    if (page.isControlled && patient.address) {
+                        doc.setFont(undefined, 'bold');
+                        doc.text('Endereço: ', margin, y);
+                        doc.setFont(undefined, 'normal');
+                        doc.text(patient.address, margin + doc.getTextWidth('Endereço: '), y);
+                        y += 6;
+                    }
+                    y += 6;
+
+                    // Medicamentos
+                    page.meds.forEach((med, idx) => {
+                        doc.setFontSize(12);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`${idx + 1}. ${med.name}`, margin + 4, y);
+                        y += 5;
+                        doc.setFontSize(10);
+                        doc.setFont(undefined, 'italic');
+                        doc.setTextColor(0, 113, 227);
+                        doc.text(med.route, margin + 12, y);
+                        doc.setTextColor(0, 0, 0);
+                        y += 5;
+                        if (med.instructions) {
+                            doc.setFont(undefined, 'normal');
+                            const instrLines = doc.splitTextToSize(med.instructions, contentWidth - 12);
+                            instrLines.forEach(line => {
+                                doc.text(line, margin + 12, y);
+                                y += 4.5;
+                            });
+                        }
+                        y += 4;
+                    });
+
+                    // Texto livre
+                    if (page.freeTexts && page.freeTexts.length > 0) {
+                        page.freeTexts.forEach(ft => {
+                            if (ft.title) {
+                                doc.setFontSize(12);
+                                doc.setFont(undefined, 'bold');
+                                doc.text(ft.title.toUpperCase(), pageWidth / 2, y, { align: 'center' });
+                                y += 8;
+                            }
+                            doc.setFontSize(11);
+                            doc.setFont(undefined, 'normal');
+                            const ftLines = doc.splitTextToSize(ft.content, contentWidth);
+                            ftLines.forEach(line => {
+                                doc.text(line, margin, y);
+                                y += 5;
+                            });
+                            y += 4;
+                        });
+                    }
+
+                    // Assinatura no rodapé
+                    const footerY = 260;
+                    doc.setDrawColor(29, 29, 31);
+                    doc.line(pageWidth / 2 - 40, footerY, pageWidth / 2 + 40, footerY);
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(doctor.name, pageWidth / 2, footerY + 5, { align: 'center' });
+                    doc.setFont(undefined, 'normal');
+                    doc.setFontSize(9);
+                    doc.text(doctor.crm, pageWidth / 2, footerY + 9, { align: 'center' });
+                    doc.text(`${city}, ${formatDate(page.hideDate)}`, pageWidth / 2, footerY + 15, { align: 'center' });
+                });
+
+                // Nome do arquivo com paciente e data
+                const today = new Date();
+                const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+                const patientSlug = (patient.name || 'paciente').trim().replace(/\s+/g, '_').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const fileName = `prescricao_${patientSlug}_${dateStr}.pdf`;
+                doc.save(fileName);
+            }, [printPages, doctor, clinic, city, patient]);
+
+            // Descrição de cada página para o banner do preview
+            const getPageLabel = (page) => {
+                if (page.freeTexts && page.freeTexts.length > 0 && page.meds.length === 0) {
+                    return 'Texto Livre';
+                }
+                let label = page.isControlled
+                    ? `Controle Especial - ${page.via}ª Via`
+                    : 'Receituário Simples';
+                if (page.totalCopies > 1) label += ` (Cópia ${page.copyIndex}/${page.totalCopies})`;
+                if (page.hideDate) label += ' — Sem Data';
+                return label;
+            };
+
+            return (
+                <React.Fragment>
+                    <div className="flex h-screen overflow-hidden no-print">
+
+                        {/* COLUNA ESQUERDA: INTERFACE DE CONTROLE */}
+                        <div className="w-full md:w-[440px] flex flex-col h-full border-r" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderColor: '#d2d2d7' }}>
+
+                            {/* Header */}
+                            <div className="px-6 py-5 flex justify-between items-center" style={{ borderBottom: '1px solid #d2d2d7' }}>
+                                <div>
+                                    <h1 className="text-xl font-semibold tracking-tight" style={{ color: '#1d1d1f', letterSpacing: '-0.02em' }}>Prescritor Digital</h1>
+                                    <p className="text-xs mt-0.5" style={{ color: '#6e6e73' }}>Simples e prático</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowDoctorSettings(!showDoctorSettings)}
+                                    className="p-2.5 rounded-full transition-all"
+                                    style={{ background: showDoctorSettings ? '#e8e8ed' : 'transparent', color: '#1d1d1f' }}
+                                    title="Configurar Médico"
+                                >
+                                    <Icons.Settings />
+                                </button>
+                            </div>
+
+                            {/* Corpo */}
+                            <div className="flex-1 overflow-y-auto px-6 py-5 hide-scrollbar space-y-6">
+
+                                {/* Configurações do Médico */}
+                                {showDoctorSettings && (
+                                    <div className="p-5 rounded-2xl space-y-4 mb-2" style={{ background: '#f5f5f7', border: '1px solid #e8e8ed' }}>
+                                        <h3 className="text-xs font-semibold uppercase" style={{ color: '#6e6e73', letterSpacing: '0.06em' }}>Dados do Prescritor</h3>
+                                        <div>
+                                            <label className="block text-xs mb-1.5" style={{ color: '#6e6e73' }}>Nome Completo</label>
+                                            <input type="text" value={doctor.name} onChange={(e) => setDoctor({...doctor, name: e.target.value})} className="w-full text-sm p-2.5 rounded-xl outline-none" style={{ border: '1px solid #d2d2d7', background: '#fff' }} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs mb-1.5" style={{ color: '#6e6e73' }}>CRM e RQE</label>
+                                                <input type="text" value={doctor.crm} onChange={(e) => setDoctor({...doctor, crm: e.target.value})} className="w-full text-sm p-2.5 rounded-xl outline-none" style={{ border: '1px solid #d2d2d7', background: '#fff' }} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs mb-1.5" style={{ color: '#6e6e73' }}>Especialidade</label>
+                                                <input type="text" value={doctor.specialty} onChange={(e) => setDoctor({...doctor, specialty: e.target.value})} className="w-full text-sm p-2.5 rounded-xl outline-none" style={{ border: '1px solid #d2d2d7', background: '#fff' }} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs mb-1.5" style={{ color: '#6e6e73' }}>Clínica de Atendimento</label>
+                                            <select
+                                                value={selectedClinicId}
+                                                onChange={(e) => setSelectedClinicId(e.target.value)}
+                                                className="w-full text-sm p-2.5 rounded-xl outline-none" style={{ border: '1px solid #d2d2d7', background: '#fff' }}
+                                            >
+                                                <option value="EIXO">EIXO Neurologia Especializada</option>
+                                                <option value="NA">NA Neurologistas Associados</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs mb-1.5" style={{ color: '#6e6e73' }}>Cidade atual</label>
+                                            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full text-sm p-2.5 rounded-xl outline-none" style={{ border: '1px solid #d2d2d7', background: '#fff' }} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Paciente */}
+                                <div>
+                                    <h3 className="text-xs font-semibold uppercase mb-3" style={{ color: '#6e6e73', letterSpacing: '0.06em' }}>Paciente</h3>
+                                    <div className="space-y-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Nome do Paciente"
+                                            value={patient.name}
+                                            onChange={(e) => setPatient({...patient, name: e.target.value})}
+                                            className="w-full p-3 rounded-xl outline-none font-medium text-sm" style={{ border: '1px solid #d2d2d7', color: '#1d1d1f' }}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="CPF do Paciente"
+                                            value={patient.cpf}
+                                            onChange={(e) => setPatient({...patient, cpf: e.target.value})}
+                                            className="w-full p-3 text-sm rounded-xl outline-none" style={{ border: '1px solid #d2d2d7', color: '#1d1d1f' }}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Endereço do Paciente (Para receitas controladas)"
+                                            value={patient.address}
+                                            onChange={(e) => setPatient({...patient, address: e.target.value})}
+                                            className="w-full p-3 text-sm rounded-xl outline-none" style={{ border: '1px solid #d2d2d7', color: '#1d1d1f' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <hr style={{ border: 'none', borderTop: '1px solid #e8e8ed' }} />
+
+                                {/* Templates / Kits de Acesso Rápido */}
+                                <div>
+                                    <h3 className="text-xs font-semibold uppercase mb-3" style={{ color: '#6e6e73', letterSpacing: '0.06em' }}>Acesso Rápido</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {TEMPLATE_KITS.map(tpl => (
+                                            <button
+                                                key={tpl.id}
+                                                onClick={() => handleAddTemplate(tpl)}
+                                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all"
+                                                style={{ background: '#f5f5f7', border: '1px solid #e8e8ed', color: '#1d1d1f' }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,113,227,0.06)'; e.currentTarget.style.borderColor = '#0071e3'; e.currentTarget.style.color = '#0071e3'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.background = '#f5f5f7'; e.currentTarget.style.borderColor = '#e8e8ed'; e.currentTarget.style.color = '#1d1d1f'; }}
+                                            >
+                                                {tpl.icon === 'FileText' ? <Icons.FileText /> : <Icons.Clipboard />}
+                                                {tpl.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <hr style={{ border: 'none', borderTop: '1px solid #e8e8ed' }} />
+
+                                {/* Medicamentos */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-xs font-semibold uppercase" style={{ color: '#6e6e73', letterSpacing: '0.06em' }}>Prescrição</h3>
+                                        <span className="text-xs" style={{ color: '#86868b' }}>
+                                            {medications.filter(m => m.name.trim()).length} medicamento(s)
+                                        </span>
+                                    </div>
+
+                                    {/* Busca Inteligente de Medicamentos */}
+                                    <div className="mb-4">
+                                        <MedicationSearch onSelect={handleAddFromSearch} />
+                                    </div>
+
+                                    {/* Opção de receita separada */}
+                                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl mb-3 transition" style={{ background: '#f5f5f7', border: '1px solid #e8e8ed' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={separatePrescriptions}
+                                            onChange={(e) => setSeparatePrescriptions(e.target.checked)}
+                                            className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                                        />
+                                        <span className="text-xs font-medium select-none" style={{ color: '#1d1d1f' }}>
+                                            Receita separada por medicamento
+                                        </span>
+                                    </label>
+
+                                    <div className="space-y-3">
+                                        {medications.map((med, index) => (
+                                            <div key={med.id} className="relative group p-4 rounded-2xl transition-all" style={{ background: '#fff', border: '1px solid #e8e8ed', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                                                {/* Botões de ação */}
+                                                <div className="absolute top-3 right-3 flex gap-1">
+                                                    {index > 0 && (
+                                                        <button
+                                                            onClick={() => moveMedication(med.id, -1)}
+                                                            className="p-1 rounded-lg transition-colors"
+                                                            style={{ color: '#86868b' }}
+                                                            title="Mover para cima"
+                                                        >
+                                                            <Icons.ChevronUp />
+                                                        </button>
+                                                    )}
+                                                    {index < medications.length - 1 && (
+                                                        <button
+                                                            onClick={() => moveMedication(med.id, 1)}
+                                                            className="p-1 rounded-lg transition-colors"
+                                                            style={{ color: '#86868b' }}
+                                                            title="Mover para baixo"
+                                                        >
+                                                            <Icons.ChevronDown />
+                                                        </button>
+                                                    )}
+                                                    {medications.length > 1 && (
+                                                        <button
+                                                            onClick={() => removeMedication(med.id)}
+                                                            className="p-1 rounded-lg transition-colors hover:text-red-500"
+                                                            style={{ color: '#86868b' }}
+                                                            title="Remover medicamento"
+                                                        >
+                                                            <Icons.Trash />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="pr-16 space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ color: '#6e6e73', background: '#f5f5f7' }}>
+                                                            #{index + 1}
+                                                        </span>
+                                                        <select
+                                                            value={med.route}
+                                                            onChange={(e) => updateMedication(med.id, 'route', e.target.value)}
+                                                            className="text-sm rounded-xl p-2 outline-none" style={{ border: '1px solid #d2d2d7', color: '#1d1d1f', background: '#fbfbfd' }}
+                                                        >
+                                                            <option>Uso Oral</option>
+                                                            <option>Uso Tópico</option>
+                                                            <option>Uso Injetável</option>
+                                                            <option>Uso Nasal</option>
+                                                            <option>Uso Oftálmico</option>
+                                                            <option>Uso Contínuo</option>
+                                                            <option>Uso Retal</option>
+                                                            <option>Uso Sublingual</option>
+                                                            <option>Uso Transdérmico</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Medicamento e apresentação (Ex: Amoxicilina 500mg)"
+                                                        value={med.name}
+                                                        onChange={(e) => updateMedication(med.id, 'name', e.target.value)}
+                                                        className="w-full p-2 outline-none font-semibold bg-transparent transition" style={{ borderBottom: '1px solid #d2d2d7', color: '#1d1d1f' }}
+                                                    />
+
+                                                    <textarea
+                                                        placeholder="Posologia e orientações"
+                                                        value={med.instructions}
+                                                        onChange={(e) => updateMedication(med.id, 'instructions', e.target.value)}
+                                                        rows="2"
+                                                        className="w-full p-2.5 text-sm rounded-xl outline-none resize-none transition" style={{ border: '1px solid #e8e8ed', color: '#1d1d1f', background: '#fbfbfd' }}
+                                                    ></textarea>
+
+                                                    {/* Opções do Medicamento */}
+                                                    <div className="flex flex-wrap gap-2 mt-2 pt-3" style={{ borderTop: '1px solid #f0f0f2' }}>
+                                                        <label className="flex items-center gap-2 cursor-pointer p-2 rounded-xl transition flex-1 min-w-[130px]" style={{ background: '#f5f5f7', border: '1px solid #e8e8ed' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={med.isControlled}
+                                                                onChange={(e) => updateMedication(med.id, 'isControlled', e.target.checked)}
+                                                                className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                                                            />
+                                                            <span className="text-xs font-medium select-none" style={{ color: '#1d1d1f' }}>
+                                                                Controlado
+                                                            </span>
+                                                        </label>
+
+                                                        <label className="flex items-center gap-2 cursor-pointer p-2 rounded-xl transition flex-1 min-w-[120px]" style={{ background: '#f5f5f7', border: '1px solid #e8e8ed' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={med.hideDate}
+                                                                onChange={(e) => updateMedication(med.id, 'hideDate', e.target.checked)}
+                                                                className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                                                            />
+                                                            <span className="text-xs font-medium select-none" style={{ color: '#1d1d1f' }}>
+                                                                Sem Data
+                                                            </span>
+                                                        </label>
+
+                                                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl flex-1 min-w-[120px] justify-between" style={{ background: '#f5f5f7', border: '1px solid #e8e8ed' }}>
+                                                            <span className="text-xs font-medium" style={{ color: '#1d1d1f' }}>Vias/Cópias:</span>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                max="12"
+                                                                value={med.copies}
+                                                                onChange={(e) => updateMedication(med.id, 'copies', parseInt(e.target.value) || 1)}
+                                                                className="w-12 p-1 text-center text-xs rounded-lg outline-none" style={{ border: '1px solid #d2d2d7', background: '#fff' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        onClick={addMedication}
+                                        className="mt-4 w-full py-3 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 text-sm"
+                                        style={{ border: '2px dashed #d2d2d7', color: '#6e6e73', background: 'transparent' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0071e3'; e.currentTarget.style.color = '#0071e3'; e.currentTarget.style.background = 'rgba(0,113,227,0.04)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#d2d2d7'; e.currentTarget.style.color = '#6e6e73'; e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <Icons.Plus /> Adicionar Medicamento
+                                    </button>
+                                </div>
+
+                                <hr style={{ border: 'none', borderTop: '1px solid #e8e8ed' }} />
+
+                                {/* Texto Livre */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-xs font-semibold uppercase" style={{ color: '#6e6e73', letterSpacing: '0.06em' }}>Texto Livre</h3>
+                                        <span className="text-xs" style={{ color: '#86868b' }}>
+                                            {freeTexts.filter(ft => ft.content.trim()).length} bloco(s)
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {freeTexts.map((ft, index) => (
+                                            <div key={ft.id} className="relative group p-4 rounded-2xl transition-all" style={{ background: '#fff', border: '1px solid #e8e8ed', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                                                <div className="absolute top-3 right-3 flex gap-1">
+                                                    <button
+                                                        onClick={() => removeFreeText(ft.id)}
+                                                        className="p-1 rounded-lg transition-colors hover:text-red-500"
+                                                        style={{ color: '#86868b' }}
+                                                        title="Remover texto livre"
+                                                    >
+                                                        <Icons.Trash />
+                                                    </button>
+                                                </div>
+
+                                                <div className="pr-10 space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ color: '#6e6e73', background: '#f5f5f7' }}>
+                                                            <Icons.FileText />
+                                                        </span>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Título (Ex: Solicitação de Exame, Atestado...)"
+                                                            value={ft.title}
+                                                            onChange={(e) => updateFreeText(ft.id, 'title', e.target.value)}
+                                                            className="w-full p-2 outline-none font-semibold bg-transparent transition text-sm" style={{ borderBottom: '1px solid #d2d2d7', color: '#1d1d1f' }}
+                                                        />
+                                                    </div>
+
+                                                    <textarea
+                                                        placeholder="Conteúdo do texto livre..."
+                                                        value={ft.content}
+                                                        onChange={(e) => updateFreeText(ft.id, 'content', e.target.value)}
+                                                        rows="4"
+                                                        className="w-full p-2.5 text-sm rounded-xl outline-none resize-none transition" style={{ border: '1px solid #e8e8ed', color: '#1d1d1f', background: '#fbfbfd' }}
+                                                    ></textarea>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        onClick={addFreeText}
+                                        className="mt-4 w-full py-3 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 text-sm"
+                                        style={{ border: '2px dashed #d2d2d7', color: '#6e6e73', background: 'transparent' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0071e3'; e.currentTarget.style.color = '#0071e3'; e.currentTarget.style.background = 'rgba(0,113,227,0.04)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#d2d2d7'; e.currentTarget.style.color = '#6e6e73'; e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <Icons.FileText /> Adicionar Texto Livre
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Footer de Ações */}
+                            <div className="px-6 py-5 space-y-3" style={{ borderTop: '1px solid #d2d2d7', background: 'rgba(255,255,255,0.5)' }}>
+                                <div className="text-xs text-center mb-1" style={{ color: '#86868b' }}>
+                                    {printPages.length === 0
+                                        ? 'Nenhuma página para imprimir'
+                                        : `${printPages.length} página(s) para impressão`
+                                    }
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={handleDownloadPDF}
+                                        disabled={printPages.length === 0}
+                                        className="apple-btn flex justify-center items-center gap-2"
+                                        style={{ fontSize: '14px', fontWeight: '500', padding: '12px 16px' }}
+                                    >
+                                        <Icons.Download /> Baixar PDF
+                                    </button>
+                                    <button
+                                        onClick={handlePrint}
+                                        disabled={printPages.length === 0}
+                                        className="apple-btn flex justify-center items-center gap-2"
+                                        style={{ fontSize: '14px', fontWeight: '500', padding: '12px 16px' }}
+                                    >
+                                        <Icons.Printer /> Imprimir
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={handleClearContent}
+                                        className="flex justify-center items-center gap-2 py-3 rounded-full font-medium transition-all text-sm"
+                                        style={{ background: '#f5f5f7', color: '#6e6e73', border: '1px solid #e8e8ed', cursor: 'pointer' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f0f2'; e.currentTarget.style.borderColor = '#d2d2d7'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f5f5f7'; e.currentTarget.style.borderColor = '#e8e8ed'; }}
+                                    >
+                                        <Icons.Eraser /> Limpar Receita
+                                    </button>
+                                    <button
+                                        onClick={handleClearAll}
+                                        className="flex justify-center items-center gap-2 py-3 rounded-full font-medium transition-all text-sm"
+                                        style={{ background: '#f5f5f7', color: '#e34040', border: '1px solid #e8e8ed', cursor: 'pointer' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#e34040'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f5f5f7'; e.currentTarget.style.borderColor = '#e8e8ed'; }}
+                                    >
+                                        <Icons.Trash /> Limpar Tudo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* COLUNA DIREITA: PREVIEW */}
+                        <div className="flex-1 overflow-y-auto p-10 hide-scrollbar" style={{ background: '#f5f5f7' }}>
+                            <div className="max-w-4xl mx-auto space-y-8">
+
+                                <div className="p-4 rounded-2xl text-sm flex items-start gap-3" style={{ background: '#fbfbfd', border: '1px solid #d2d2d7', color: '#1d1d1f' }}>
+                                    <div className="mt-0.5" style={{ fontSize: '16px' }}>ℹ️</div>
+                                    <div>
+                                        <p className="font-semibold" style={{ color: '#1d1d1f' }}>Lógica de Impressão Automática</p>
+                                        <p style={{ color: '#6e6e73', marginTop: '2px' }}>As páginas abaixo refletem exatamente o que sairá na impressora. Medicamentos são agrupados por tipo (simples vs. controlado) e por presença de data. Medicamentos controlados geram 1ª e 2ª via automaticamente.</p>
+                                    </div>
+                                </div>
+
+                                {pages.map((page) => (
+                                    <div key={page.id}>
+                                        {!page.isEmpty && (
+                                            <h3 className="font-medium mb-3 text-center text-xs uppercase mt-8" style={{ color: '#86868b', letterSpacing: '0.06em' }}>
+                                                {getPageLabel(page)}
+                                            </h3>
+                                        )}
+                                        <PrescriptionPage
+                                            meds={page.meds}
+                                            freeTexts={page.freeTexts}
+                                            isControlled={page.isControlled}
+                                            via={page.via}
+                                            hideDate={page.hideDate}
+                                            doctor={doctor}
+                                            clinic={clinic}
+                                            city={city}
+                                            patient={patient}
+                                            forPrint={false}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ============================================ */}
+                    {/* ÁREA DE IMPRESSÃO — invisível na tela,       */}
+                    {/* visível somente em @media print               */}
+                    {/* ============================================ */}
+                    <div className="print-area">
+                        {printPages.map(page => (
+                            <PrescriptionPage
+                                key={`print-${page.id}`}
+                                meds={page.meds}
+                                freeTexts={page.freeTexts}
+                                isControlled={page.isControlled}
+                                via={page.via}
+                                hideDate={page.hideDate}
+                                doctor={doctor}
+                                clinic={clinic}
+                                city={city}
+                                patient={patient}
+                                forPrint={true}
+                            />
+                        ))}
+                    </div>
+                </React.Fragment>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
