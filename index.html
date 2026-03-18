@@ -168,10 +168,21 @@
             line-height: 1.4;
         }
 
-        /* Cabeçalho por tipo de receita */
-        .rx-header-A    { background: #dbeafe; border-bottom: 3px solid #1d4ed8; }
-        .rx-header-B    { background: #fef9c3; border-bottom: 3px solid #ca8a04; }
-        .rx-header-C    { background: #f5f5f7; border-bottom: 2px solid #d2d2d7; }
+        /* Cabeçalho por tipo de receita — cores ANVISA */
+        .rx-header-A    { background: #fef9c3; border-bottom: 3px solid #ca8a04; }   /* Amarela — Lista A  */
+        .rx-header-B    { background: #dbeafe; border-bottom: 3px solid #1d4ed8; }   /* Azul    — Lista B  */
+        .rx-header-C    { background: #f5f5f7; border-bottom: 2px solid #6b7280; }   /* Branca  — Especial */
+
+        /* Fundo de página colorido para receitas A e B (impressão) */
+        @media print {
+            .rx-page-A { background: #fefce8 !important; }
+            .rx-page-B { background: #eff6ff !important; }
+        }
+
+        /* Campos de identificação — Receita Especial */
+        .rx-id-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1.5px solid #1d1d1f; font-size: 9px; }
+        .rx-id-grid .cell { border: 0.5px solid #9ca3af; padding: 4px 6px; min-height: 22px; }
+        .rx-id-grid .cell-label { font-weight: 600; font-size: 8px; color: #374151; display: block; margin-bottom: 1px; }
 
         /* Selo de assinatura */
         .rx-seal {
@@ -233,11 +244,12 @@
         // Base de Medicamentos Psiquiátricos (ANVISA)
         // ========================================
         // Tipo de receita conforme ANVISA: 'A'=Notificação A (azul), 'B1'=Notificação B1 (amarela), 'B2'=B2, 'C1'=Controle Especial (branca 2 vias), null=Receita Simples
+        // Cores conforme ANVISA: A = Amarela | B1/B2 = Azul | C1 = Branca 2 vias
         const TIPO_RECEITA = {
-          A:  { label:'Notificação de Receita A',          cor:'#1d4ed8', bg:'#dbeafe', via:'Azul — Lista A2',  vias:1 },
-          B1: { label:'Notificação de Receita B',          cor:'#92400e', bg:'#fef9c3', via:'Amarela — Lista B1', vias:1 },
-          B2: { label:'Notificação de Receita B',          cor:'#92400e', bg:'#fef9c3', via:'Amarela — Lista B2', vias:1 },
-          C1: { label:'Receituário de Controle Especial',  cor:'#1d1d1f', bg:'#f5f5f7', via:'Branca — 2 vias',   vias:2 },
+          A:  { label:'Notificação de Receita A',          cor:'#92400e', bg:'#fef9c3', via:'Amarela — Lista A2', vias:1, pageClass:'rx-page-A' },
+          B1: { label:'Notificação de Receita B',          cor:'#1e40af', bg:'#dbeafe', via:'Azul — Lista B1',    vias:1, pageClass:'rx-page-B' },
+          B2: { label:'Notificação de Receita B',          cor:'#1e40af', bg:'#dbeafe', via:'Azul — Lista B2',    vias:1, pageClass:'rx-page-B' },
+          C1: { label:'Receituário de Controle Especial',  cor:'#1d1d1f', bg:'#f5f5f7', via:'Branca — 2 vias',    vias:2, pageClass:'' },
         };
 
         const PSYCH_MEDICATIONS = [
@@ -443,10 +455,11 @@
         // Componente de Página de Prescrição (A4)
         // ========================================
         const PrescriptionPage = ({ meds, freeTexts: pageFreeTexts, isControlled, tipoReceita, via, hideDate, doctor, clinic, city, patient, forPrint, signatureDataUrl, rxId, birdIdSigned }) => {
-            const pageClass = forPrint ? "a4-page" : "a4-preview";
-            const tipoInfo  = tipoReceita ? TIPO_RECEITA[tipoReceita] : null;
-            const headerClass = tipoReceita === 'A' ? 'rx-header-A' : tipoReceita === 'B1' || tipoReceita === 'B2' ? 'rx-header-B' : 'rx-header-C';
-            const dateStr = formatDate(hideDate);
+            const tipoInfo    = tipoReceita ? TIPO_RECEITA[tipoReceita] : null;
+            const headerClass = tipoReceita === 'A' ? 'rx-header-A' : (tipoReceita === 'B1' || tipoReceita === 'B2') ? 'rx-header-B' : (isControlled ? 'rx-header-C' : '');
+            const pageExtra   = tipoInfo?.pageClass || '';
+            const pageClass   = `${forPrint ? 'a4-page' : 'a4-preview'} ${pageExtra}`;
+            const dateStr     = formatDate(hideDate);
 
             return (
                 <div className={pageClass} style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
@@ -573,34 +586,118 @@
                             <PrescriptionSeal rxId={rxId} doctor={doctor} patient={patient} date={dateStr} signed={!!signatureDataUrl} birdIdSigned={birdIdSigned} />
                         )}
 
-                        {/* Caixas Anvisa para controlados */}
+                        {/* Formulários ANVISA — Receita Especial (C1) e Notificações A/B */}
                         {isControlled && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1.5px solid #d2d2d7', paddingTop: '16px' }}>
-                                <div className="box-controle">
-                                    <h4 style={{ fontWeight: '600', textAlign: 'center', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px', marginBottom: '8px', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.04em' }}>Identificação do Comprador</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Nome:</p>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>
-                                            <p>RG:</p>
-                                            <p>Órgão Emissor:</p>
+                            <div style={{ borderTop: '1.5px solid #374151', paddingTop: '12px', marginTop: '8px' }}>
+
+                                {/* ── RECEITA ESPECIAL C1: campos de comprador + fornecedor ── */}
+                                {(!tipoReceita || tipoReceita === 'C1') && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        {/* Identificação do Comprador */}
+                                        <div style={{ border: '1.5px solid #374151', fontSize: '9px', lineHeight: 1.6 }}>
+                                            <div style={{ background: '#374151', color: '#fff', padding: '3px 8px', fontWeight: '700', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                Identificação do Comprador
+                                            </div>
+                                            <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                <div style={{ borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                    <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>NOME</span>
+                                                    <span style={{ display: 'block', minHeight: '14px' }}>{patient.name || ''}</span>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                    <div>
+                                                        <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>RG</span>
+                                                        <span style={{ display: 'block', minHeight: '14px' }}></span>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>ÓRGÃO EMISSOR</span>
+                                                        <span style={{ display: 'block', minHeight: '14px' }}></span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                    <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>ENDEREÇO</span>
+                                                    <span style={{ display: 'block', minHeight: '14px' }}>{patient.address || ''}</span>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '8px', borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                    <div>
+                                                        <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>CIDADE / UF</span>
+                                                        <span style={{ display: 'block', minHeight: '14px' }}></span>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>TELEFONE</span>
+                                                        <span style={{ display: 'block', minHeight: '14px' }}></span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>CPF</span>
+                                                    <span style={{ display: 'block', minHeight: '14px' }}>{patient.cpf || ''}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Endereço:</p>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>
-                                            <p>Cidade / UF:</p>
-                                            <p>Telefone:</p>
+
+                                        {/* Identificação do Fornecedor */}
+                                        <div style={{ border: '1.5px solid #374151', fontSize: '9px', lineHeight: 1.6, display: 'flex', flexDirection: 'column' }}>
+                                            <div style={{ background: '#374151', color: '#fff', padding: '3px 8px', fontWeight: '700', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                Identificação do Fornecedor
+                                            </div>
+                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #9ca3af', minHeight: '50px', color: '#9ca3af', fontStyle: 'italic' }}>
+                                                Carimbo / CNPJ da Farmácia
+                                            </div>
+                                            <div style={{ padding: '6px 8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                <div>
+                                                    <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>DATA DE DISPENSAÇÃO</span>
+                                                    <span style={{ display: 'block', minHeight: '14px', borderBottom: '1px solid #9ca3af' }}></span>
+                                                </div>
+                                                <div>
+                                                    <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>ASSINATURA DO FARMACÊUTICO</span>
+                                                    <span style={{ display: 'block', minHeight: '14px', borderBottom: '1px solid #9ca3af' }}></span>
+                                                </div>
+                                            </div>
+                                            <div style={{ padding: '0 8px 6px' }}>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>CRF</span>
+                                                <span style={{ display: 'block', minHeight: '14px', borderBottom: '1px solid #9ca3af' }}></span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="box-controle" style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <h4 style={{ fontWeight: '600', textAlign: 'center', borderBottom: '1px solid #d2d2d7', paddingBottom: '4px', marginBottom: '8px', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.04em' }}>Identificação do Fornecedor</h4>
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #d2d2d7', marginBottom: '8px' }}>
-                                        <p style={{ color: '#86868b', fontStyle: 'italic' }}>Carimbo da Farmácia</p>
+                                )}
+
+                                {/* ── NOTIFICAÇÃO A/B: campo de identificação simplificado ── */}
+                                {(tipoReceita === 'A' || tipoReceita === 'B1' || tipoReceita === 'B2') && (
+                                    <div style={{ border: '1.5px solid #374151', fontSize: '9px', lineHeight: 1.6 }}>
+                                        <div style={{ background: '#374151', color: '#fff', padding: '3px 8px', fontWeight: '700', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                            Identificação do Comprador — {tipoReceita === 'A' ? 'Notificação de Receita A' : 'Notificação de Receita B'}
+                                        </div>
+                                        <div style={{ padding: '6px 8px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                                            <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>NOME DO PACIENTE</span>
+                                                <span style={{ display: 'block', minHeight: '14px' }}>{patient.name || ''}</span>
+                                            </div>
+                                            <div style={{ borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>RG / CPF</span>
+                                                <span style={{ display: 'block', minHeight: '14px' }}>{patient.cpf || ''}</span>
+                                            </div>
+                                            <div style={{ borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>ÓRGÃO EMISSOR</span>
+                                                <span style={{ display: 'block', minHeight: '14px' }}></span>
+                                            </div>
+                                            <div style={{ borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>TELEFONE</span>
+                                                <span style={{ display: 'block', minHeight: '14px' }}></span>
+                                            </div>
+                                            <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid #9ca3af', paddingBottom: '3px' }}>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>ENDEREÇO COMPLETO</span>
+                                                <span style={{ display: 'block', minHeight: '14px' }}>{patient.address || ''}</span>
+                                            </div>
+                                            <div style={{ gridColumn: '1 / 3' }}>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>CIDADE / UF</span>
+                                                <span style={{ display: 'block', minHeight: '14px', borderBottom: '1px solid #9ca3af' }}></span>
+                                            </div>
+                                            <div>
+                                                <span style={{ fontWeight: '600', display: 'block', fontSize: '8px', color: '#6b7280' }}>DATA DA DISPENSAÇÃO</span>
+                                                <span style={{ display: 'block', minHeight: '14px', borderBottom: '1px solid #9ca3af' }}></span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Data:</p>
-                                        <p style={{ borderBottom: '1px solid #d2d2d7', paddingBottom: '4px' }}>Assinatura:</p>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1534,13 +1631,23 @@
                                     />
                                 )}
 
-                                {/* Alerta Receita Controlada */}
+                                {/* Alerta Receita Controlada — cores corretas ANVISA */}
                                 {hasControlled && (
-                                    <div style={{ padding: '10px 14px', background: tipoReceitaAtual === 'A' ? '#dbeafe' : tipoReceitaAtual === 'B1' || tipoReceitaAtual === 'B2' ? '#fef9c3' : '#fff7ed', border: `1px solid ${tipoReceitaAtual === 'A' ? '#93c5fd' : tipoReceitaAtual === 'B1' || tipoReceitaAtual === 'B2' ? '#fde68a' : '#fed7aa'}`, borderRadius: '12px', fontSize: '12px', color: tipoReceitaAtual === 'A' ? '#1e40af' : tipoReceitaAtual === 'B1' || tipoReceitaAtual === 'B2' ? '#92400e' : '#9a3412' }}>
+                                    <div style={{
+                                        padding: '10px 14px',
+                                        background: tipoReceitaAtual === 'A' ? '#fef9c3' : tipoReceitaAtual === 'B1' || tipoReceitaAtual === 'B2' ? '#dbeafe' : '#f5f5f7',
+                                        border: `1.5px solid ${tipoReceitaAtual === 'A' ? '#ca8a04' : tipoReceitaAtual === 'B1' || tipoReceitaAtual === 'B2' ? '#1d4ed8' : '#6b7280'}`,
+                                        borderRadius: '12px', fontSize: '12px',
+                                        color: tipoReceitaAtual === 'A' ? '#78350f' : tipoReceitaAtual === 'B1' || tipoReceitaAtual === 'B2' ? '#1e3a8a' : '#374151'
+                                    }}>
                                         <strong>
-                                            {tipoReceitaAtual === 'A' ? '🔵 Notificação de Receita A (Lista A2)' : tipoReceitaAtual === 'B1' ? '🟡 Notificação de Receita B1 (Lista B1)' : tipoReceitaAtual === 'B2' ? '🟡 Notificação de Receita B2' : '⚠ Receituário de Controle Especial'}
+                                            {tipoReceitaAtual === 'A'  ? '🟡 Notificação de Receita A — Lista A2 (Amarela)' :
+                                             tipoReceitaAtual === 'B1' ? '🔵 Notificação de Receita B1 — Lista B1 (Azul)' :
+                                             tipoReceitaAtual === 'B2' ? '🔵 Notificação de Receita B2 (Azul)' :
+                                                                          '⬜ Receituário de Controle Especial — Branca 2 vias'}
                                         </strong>
-                                        {' '}— {tipoReceitaAtual ? `Via ${TIPO_RECEITA[tipoReceitaAtual]?.via}. ` : ''}{(TIPO_RECEITA[tipoReceitaAtual]?.vias || 2) > 1 ? `${TIPO_RECEITA[tipoReceitaAtual]?.vias || 2} vias geradas automaticamente.` : '1 via.'}
+                                        {tipoReceitaAtual && ` — ${TIPO_RECEITA[tipoReceitaAtual].vias} via(s).`}
+                                        {tipoReceitaAtual === 'C1' && ' Preencha os dados do comprador na receita.'}
                                     </div>
                                 )}
 
