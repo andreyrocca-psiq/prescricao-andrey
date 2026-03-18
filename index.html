@@ -212,25 +212,115 @@
         };
 
         // ========================================
-        // Mock ANVISA - Dados de Medicamentos
+        // Base de Medicamentos Psiquiátricos (ANVISA)
         // ========================================
-        const ANVISA_MEDICATIONS = [
-            { id: 1, principioAtivo: 'Levodopa + Benserazida', nomeComercial: 'Prolopa', apresentacao: '200/50mg comprimido', isControlled: false },
-            { id: 2, principioAtivo: 'Pramipexol', nomeComercial: 'Sifrol', apresentacao: '0,25mg comprimido', isControlled: false },
-            { id: 3, principioAtivo: 'Donepezila', nomeComercial: 'ErANZ', apresentacao: '10mg comprimido', isControlled: false },
-            { id: 4, principioAtivo: 'Quetiapina', nomeComercial: 'Seroquel', apresentacao: '25mg comprimido', isControlled: true },
-            { id: 5, principioAtivo: 'Toxina Botulínica A', nomeComercial: 'Botox', apresentacao: '100U frasco-ampola', isControlled: false },
+        const PSYCH_MEDICATIONS = [
+          // ANTIDEPRESSIVOS - ISRS
+          { id:1,  categoria:'Antidepressivos (ISRS)', principioAtivo:'Escitalopram', nomeComercial:'Lexapro / Exodus', apresentacoes:['10mg comprimido','20mg comprimido'], isControlled:false },
+          { id:2,  categoria:'Antidepressivos (ISRS)', principioAtivo:'Sertralina', nomeComercial:'Zoloft / Assert', apresentacoes:['25mg comprimido','50mg comprimido','100mg comprimido'], isControlled:false },
+          { id:3,  categoria:'Antidepressivos (ISRS)', principioAtivo:'Fluoxetina', nomeComercial:'Prozac / Daforin', apresentacoes:['20mg comprimido','40mg comprimido','20mg/5mL solução oral'], isControlled:false },
+          { id:4,  categoria:'Antidepressivos (ISRS)', principioAtivo:'Paroxetina', nomeComercial:'Aropax / Paxil', apresentacoes:['20mg comprimido','30mg comprimido','40mg comprimido'], isControlled:false },
+          { id:5,  categoria:'Antidepressivos (ISRS)', principioAtivo:'Fluvoxamina', nomeComercial:'Luvox', apresentacoes:['50mg comprimido','100mg comprimido'], isControlled:false },
+          { id:6,  categoria:'Antidepressivos (ISRS)', principioAtivo:'Citalopram', nomeComercial:'Cipramil', apresentacoes:['20mg comprimido','40mg comprimido'], isControlled:false },
+          // ANTIDEPRESSIVOS - IRSN
+          { id:7,  categoria:'Antidepressivos (IRSN)', principioAtivo:'Venlafaxina', nomeComercial:'Efexor XR', apresentacoes:['37,5mg cápsula','75mg cápsula','150mg cápsula'], isControlled:false },
+          { id:8,  categoria:'Antidepressivos (IRSN)', principioAtivo:'Duloxetina', nomeComercial:'Cymbalta', apresentacoes:['30mg cápsula','60mg cápsula'], isControlled:false },
+          { id:9,  categoria:'Antidepressivos (IRSN)', principioAtivo:'Desvenlafaxina', nomeComercial:'Pristiq', apresentacoes:['50mg comprimido','100mg comprimido'], isControlled:false },
+          // ANTIDEPRESSIVOS - OUTROS
+          { id:10, categoria:'Antidepressivos (Outros)', principioAtivo:'Bupropiona', nomeComercial:'Wellbutrin XL / Zyban', apresentacoes:['150mg comprimido LP','300mg comprimido LP'], isControlled:false },
+          { id:11, categoria:'Antidepressivos (Outros)', principioAtivo:'Mirtazapina', nomeComercial:'Remeron', apresentacoes:['15mg comprimido','30mg comprimido','45mg comprimido'], isControlled:false },
+          { id:12, categoria:'Antidepressivos (Outros)', principioAtivo:'Trazodona', nomeComercial:'Donaren', apresentacoes:['50mg comprimido','100mg comprimido'], isControlled:false },
+          { id:13, categoria:'Antidepressivos (Outros)', principioAtivo:'Vortioxetina', nomeComercial:'Brintellix', apresentacoes:['5mg comprimido','10mg comprimido','15mg comprimido','20mg comprimido'], isControlled:false },
+          { id:14, categoria:'Antidepressivos (Outros)', principioAtivo:'Amitriptilina', nomeComercial:'Amytril', apresentacoes:['25mg comprimido','75mg comprimido'], isControlled:false },
+          { id:15, categoria:'Antidepressivos (Outros)', principioAtivo:'Clomipramina', nomeComercial:'Anafranil', apresentacoes:['25mg comprimido','75mg comprimido'], isControlled:false },
+          { id:16, categoria:'Antidepressivos (Outros)', principioAtivo:'Nortriptilina', nomeComercial:'Pamelor', apresentacoes:['10mg cápsula','25mg cápsula','50mg cápsula','75mg cápsula'], isControlled:false },
+          { id:17, categoria:'Antidepressivos (Outros)', principioAtivo:'Imipramina', nomeComercial:'Tofranil', apresentacoes:['10mg comprimido','25mg comprimido'], isControlled:false },
+          { id:18, categoria:'Antidepressivos (Outros)', principioAtivo:'Maprotilina', nomeComercial:'Ludiomil', apresentacoes:['25mg comprimido','75mg comprimido'], isControlled:false },
+          // ANTIPSICÓTICOS
+          { id:19, categoria:'Antipsicóticos', principioAtivo:'Quetiapina', nomeComercial:'Seroquel', apresentacoes:['25mg comprimido','50mg comprimido','100mg comprimido','200mg comprimido','300mg comprimido'], isControlled:true },
+          { id:20, categoria:'Antipsicóticos', principioAtivo:'Quetiapina XR', nomeComercial:'Seroquel XRO', apresentacoes:['50mg comprimido LP','150mg comprimido LP','200mg comprimido LP','300mg comprimido LP','400mg comprimido LP'], isControlled:true },
+          { id:21, categoria:'Antipsicóticos', principioAtivo:'Risperidona', nomeComercial:'Risperdal', apresentacoes:['0,5mg comprimido','1mg comprimido','2mg comprimido','3mg comprimido','4mg comprimido','1mg/mL solução oral'], isControlled:false },
+          { id:22, categoria:'Antipsicóticos', principioAtivo:'Olanzapina', nomeComercial:'Zyprexa', apresentacoes:['2,5mg comprimido','5mg comprimido','7,5mg comprimido','10mg comprimido'], isControlled:true },
+          { id:23, categoria:'Antipsicóticos', principioAtivo:'Aripiprazol', nomeComercial:'Abilify', apresentacoes:['2mg comprimido','5mg comprimido','10mg comprimido','15mg comprimido','20mg comprimido','30mg comprimido'], isControlled:false },
+          { id:24, categoria:'Antipsicóticos', principioAtivo:'Ziprasidona', nomeComercial:'Geodon', apresentacoes:['20mg cápsula','40mg cápsula','60mg cápsula','80mg cápsula'], isControlled:true },
+          { id:25, categoria:'Antipsicóticos', principioAtivo:'Amisulprida', nomeComercial:'Socian', apresentacoes:['50mg comprimido','100mg comprimido','200mg comprimido','400mg comprimido'], isControlled:true },
+          { id:26, categoria:'Antipsicóticos', principioAtivo:'Haloperidol', nomeComercial:'Haldol', apresentacoes:['1mg comprimido','5mg comprimido','2mg/mL solução oral','50mg/mL injetável'], isControlled:true },
+          { id:27, categoria:'Antipsicóticos', principioAtivo:'Clozapina', nomeComercial:'Leponex', apresentacoes:['25mg comprimido','100mg comprimido'], isControlled:true },
+          { id:28, categoria:'Antipsicóticos', principioAtivo:'Paliperidona', nomeComercial:'Invega', apresentacoes:['3mg comprimido','6mg comprimido','9mg comprimido','12mg comprimido'], isControlled:false },
+          { id:29, categoria:'Antipsicóticos', principioAtivo:'Lurasidona', nomeComercial:'Latuda', apresentacoes:['20mg comprimido','40mg comprimido','60mg comprimido','80mg comprimido'], isControlled:false },
+          { id:30, categoria:'Antipsicóticos', principioAtivo:'Brexpiprazol', nomeComercial:'Rexulti', apresentacoes:['0,5mg comprimido','1mg comprimido','2mg comprimido','3mg comprimido','4mg comprimido'], isControlled:false },
+          { id:31, categoria:'Antipsicóticos', principioAtivo:'Cariprazina', nomeComercial:'Reagila', apresentacoes:['1,5mg cápsula','3mg cápsula','4,5mg cápsula','6mg cápsula'], isControlled:false },
+          // ESTABILIZADORES DE HUMOR
+          { id:32, categoria:'Estabilizadores de Humor', principioAtivo:'Carbonato de Lítio', nomeComercial:'Carbolitium', apresentacoes:['150mg comprimido','300mg comprimido','450mg comprimido'], isControlled:false },
+          { id:33, categoria:'Estabilizadores de Humor', principioAtivo:'Valproato de Sódio', nomeComercial:'Depakote ER', apresentacoes:['250mg comprimido','500mg comprimido'], isControlled:false },
+          { id:34, categoria:'Estabilizadores de Humor', principioAtivo:'Ácido Valpróico', nomeComercial:'Depakene', apresentacoes:['250mg cápsula','500mg cápsula','50mg/mL xarope'], isControlled:false },
+          { id:35, categoria:'Estabilizadores de Humor', principioAtivo:'Lamotrigina', nomeComercial:'Lamictal', apresentacoes:['25mg comprimido','50mg comprimido','100mg comprimido','150mg comprimido','200mg comprimido'], isControlled:false },
+          { id:36, categoria:'Estabilizadores de Humor', principioAtivo:'Carbamazepina', nomeComercial:'Tegretol', apresentacoes:['200mg comprimido','400mg comprimido'], isControlled:true },
+          { id:37, categoria:'Estabilizadores de Humor', principioAtivo:'Oxcarbazepina', nomeComercial:'Trileptal', apresentacoes:['150mg comprimido','300mg comprimido','600mg comprimido'], isControlled:false },
+          { id:38, categoria:'Estabilizadores de Humor', principioAtivo:'Topiramato', nomeComercial:'Topamax', apresentacoes:['25mg comprimido','50mg comprimido','100mg comprimido','200mg comprimido'], isControlled:false },
+          // BENZODIAZEPÍNICOS
+          { id:39, categoria:'Benzodiazepínicos', principioAtivo:'Clonazepam', nomeComercial:'Rivotril', apresentacoes:['0,25mg comprimido','0,5mg comprimido','2mg comprimido','2,5mg/mL gotas'], isControlled:true },
+          { id:40, categoria:'Benzodiazepínicos', principioAtivo:'Alprazolam', nomeComercial:'Frontal / Xanax', apresentacoes:['0,25mg comprimido','0,5mg comprimido','1mg comprimido','2mg comprimido'], isControlled:true },
+          { id:41, categoria:'Benzodiazepínicos', principioAtivo:'Diazepam', nomeComercial:'Valium', apresentacoes:['2mg comprimido','5mg comprimido','10mg comprimido'], isControlled:true },
+          { id:42, categoria:'Benzodiazepínicos', principioAtivo:'Lorazepam', nomeComercial:'Lorax', apresentacoes:['1mg comprimido','2mg comprimido'], isControlled:true },
+          { id:43, categoria:'Benzodiazepínicos', principioAtivo:'Bromazepam', nomeComercial:'Lexotan', apresentacoes:['1,5mg comprimido','3mg comprimido','6mg comprimido'], isControlled:true },
+          { id:44, categoria:'Benzodiazepínicos', principioAtivo:'Clobazam', nomeComercial:'Urbanil', apresentacoes:['5mg comprimido','10mg comprimido','20mg comprimido'], isControlled:true },
+          { id:45, categoria:'Benzodiazepínicos', principioAtivo:'Cloxazolam', nomeComercial:'Olcadil', apresentacoes:['1mg comprimido','2mg comprimido'], isControlled:true },
+          { id:46, categoria:'Benzodiazepínicos', principioAtivo:'Midazolam', nomeComercial:'Dormicum', apresentacoes:['7,5mg comprimido','15mg comprimido'], isControlled:true },
+          // TDAH
+          { id:47, categoria:'TDAH', principioAtivo:'Metilfenidato', nomeComercial:'Ritalina / Concerta', apresentacoes:['10mg comprimido','18mg comprimido OROS','27mg comprimido OROS','36mg comprimido OROS','54mg comprimido OROS'], isControlled:true },
+          { id:48, categoria:'TDAH', principioAtivo:'Lisdexanfetamina', nomeComercial:'Vyvanse', apresentacoes:['20mg cápsula','30mg cápsula','40mg cápsula','50mg cápsula','60mg cápsula','70mg cápsula'], isControlled:true },
+          { id:49, categoria:'TDAH', principioAtivo:'Atomoxetina', nomeComercial:'Strattera', apresentacoes:['10mg cápsula','18mg cápsula','25mg cápsula','40mg cápsula','60mg cápsula','80mg cápsula'], isControlled:false },
+          // SONO / SEDAÇÃO
+          { id:50, categoria:'Sono / Sedação', principioAtivo:'Zolpidem', nomeComercial:'Stilnox', apresentacoes:['5mg comprimido','10mg comprimido'], isControlled:true },
+          { id:51, categoria:'Sono / Sedação', principioAtivo:'Zopiclona', nomeComercial:'Imovane', apresentacoes:['7,5mg comprimido'], isControlled:true },
+          { id:52, categoria:'Sono / Sedação', principioAtivo:'Melatonina', nomeComercial:'Melatonina', apresentacoes:['0,21mg comprimido','0,5mg comprimido','1mg comprimido','2mg comprimido','3mg comprimido','5mg comprimido','10mg comprimido'], isControlled:false },
+          { id:53, categoria:'Sono / Sedação', principioAtivo:'Prometazina', nomeComercial:'Fenergan', apresentacoes:['25mg comprimido','50mg comprimido'], isControlled:false },
+          // ANSIOLÍTICOS NÃO-BENZO
+          { id:54, categoria:'Ansiolíticos', principioAtivo:'Buspirona', nomeComercial:'Buspar', apresentacoes:['5mg comprimido','10mg comprimido'], isControlled:false },
+          { id:55, categoria:'Ansiolíticos', principioAtivo:'Pregabalina', nomeComercial:'Lyrica', apresentacoes:['25mg cápsula','50mg cápsula','75mg cápsula','100mg cápsula','150mg cápsula','200mg cápsula','300mg cápsula'], isControlled:true },
+          { id:56, categoria:'Ansiolíticos', principioAtivo:'Gabapentina', nomeComercial:'Neurontin', apresentacoes:['100mg cápsula','300mg cápsula','400mg cápsula'], isControlled:false },
+          { id:57, categoria:'Ansiolíticos', principioAtivo:'Hidroxizina', nomeComercial:'Hixizine', apresentacoes:['10mg comprimido','25mg comprimido','2mg/mL xarope'], isControlled:false },
+          // ANTIDEMÊNCIA
+          { id:58, categoria:'Antidemência', principioAtivo:'Donepezila', nomeComercial:'Aricept', apresentacoes:['5mg comprimido','10mg comprimido'], isControlled:false },
+          { id:59, categoria:'Antidemência', principioAtivo:'Memantina', nomeComercial:'Ebixa / Ebix', apresentacoes:['5mg comprimido','10mg comprimido','10mg/mL gotas'], isControlled:false },
+          { id:60, categoria:'Antidemência', principioAtivo:'Rivastigmina', nomeComercial:'Exelon', apresentacoes:['1,5mg cápsula','3mg cápsula','4,5mg cápsula','6mg cápsula','2mg/mL solução oral','4,6mg/24h adesivo','9,5mg/24h adesivo'], isControlled:false },
+          { id:61, categoria:'Antidemência', principioAtivo:'Galantamina', nomeComercial:'Reminyl ER', apresentacoes:['8mg cápsula','16mg cápsula','24mg cápsula'], isControlled:false },
+          // OUTROS
+          { id:62, categoria:'Outros', principioAtivo:'Naltrexona', nomeComercial:'Vivitrol / Revia', apresentacoes:['50mg comprimido'], isControlled:false },
+          { id:63, categoria:'Outros', principioAtivo:'Acamprosato', nomeComercial:'Campral', apresentacoes:['333mg comprimido'], isControlled:false },
+          { id:64, categoria:'Outros', principioAtivo:'Dissulfiram', nomeComercial:'Antietanol', apresentacoes:['250mg comprimido','500mg comprimido'], isControlled:false },
+          { id:65, categoria:'Outros', principioAtivo:'N-Acetilcisteína', nomeComercial:'NAC', apresentacoes:['600mg comprimido efervescente'], isControlled:false },
         ];
 
+        // Expandir por apresentação para busca
+        const ANVISA_MEDICATIONS = PSYCH_MEDICATIONS.flatMap(med =>
+          med.apresentacoes.map((ap, i) => ({
+            id: `${med.id}_${i}`,
+            baseId: med.id,
+            categoria: med.categoria,
+            principioAtivo: med.principioAtivo,
+            nomeComercial: med.nomeComercial,
+            apresentacao: ap,
+            isControlled: med.isControlled,
+          }))
+        );
+
         const searchAnvisaMedications = (query) => {
-            if (!query || query.length < 3) return [];
+            if (!query || query.length < 2) return [];
             const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return ANVISA_MEDICATIONS.filter(med => {
-                const searchFields = [
-                    med.principioAtivo, med.nomeComercial, med.apresentacao
-                ].join(' ').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                return searchFields.includes(q);
+            const matched = ANVISA_MEDICATIONS.filter(med => {
+                const fields = [med.principioAtivo, med.nomeComercial, med.apresentacao, med.categoria]
+                    .join(' ').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return fields.includes(q);
             });
+            // Retorna um por medicamento base (agrupa apresentações)
+            const seen = new Set();
+            return matched.filter(m => {
+                if (seen.has(m.baseId)) return false;
+                seen.add(m.baseId);
+                return true;
+            }).slice(0, 20);
         };
 
         // ========================================
@@ -259,6 +349,51 @@
                 content: 'Atesto para os devidos fins que ________________________________________, portador(a) do documento de identidade nº ______________________, esteve acompanhando o(a) paciente acima identificado(a) em consulta médica nesta clínica na data de hoje, permanecendo no local das ______ às ______ horas.'
             },
         ];
+
+        // ========================================
+        // Histórico de Pacientes (localStorage)
+        // ========================================
+        const HISTORY_KEY = 'prescricao_andrey_historico';
+
+        const loadAllHistory = () => {
+            try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}'); }
+            catch { return {}; }
+        };
+
+        const getPatientKey = (patient) =>
+            (patient.cpf || '').replace(/\D/g,'') || patient.name.trim().toLowerCase();
+
+        const saveToHistory = (patient, medications, freeTexts) => {
+            if (!patient.name.trim()) return;
+            const all = loadAllHistory();
+            const key = getPatientKey(patient);
+            if (!all[key]) all[key] = { patient: { ...patient }, prescriptions: [] };
+            all[key].patient = { ...patient };
+            const meds = medications.filter(m => m.name.trim());
+            if (meds.length === 0 && freeTexts.filter(f => f.content.trim()).length === 0) return;
+            all[key].prescriptions.unshift({
+                id: Date.now(),
+                date: new Date().toLocaleDateString('pt-BR'),
+                dateIso: new Date().toISOString(),
+                medications: meds,
+                freeTexts: freeTexts.filter(f => f.content.trim()),
+            });
+            // Manter máximo 50 por paciente
+            all[key].prescriptions = all[key].prescriptions.slice(0, 50);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(all));
+        };
+
+        const loadPatientHistory = (patient) => {
+            if (!patient.name.trim()) return [];
+            const all = loadAllHistory();
+            const key = getPatientKey(patient);
+            return all[key] ? all[key].prescriptions : [];
+        };
+
+        const listAllPatients = () => {
+            const all = loadAllHistory();
+            return Object.values(all).map(v => v.patient).filter(p => p.name);
+        };
 
         // Helper: data formatada
         const formatDate = (hideDate) => {
@@ -553,17 +688,19 @@
             const [query, setQuery] = useState('');
             const [results, setResults] = useState([]);
             const [showDropdown, setShowDropdown] = useState(false);
+            const [selectedMedBase, setSelectedMedBase] = useState(null);
             const inputRef = React.useRef(null);
             const dropdownRef = React.useRef(null);
 
             useEffect(() => {
-                if (query.length >= 3) {
+                if (query.length >= 2) {
                     const found = searchAnvisaMedications(query);
                     setResults(found);
                     setShowDropdown(found.length > 0);
                 } else {
                     setResults([]);
                     setShowDropdown(false);
+                    setSelectedMedBase(null);
                 }
             }, [query]);
 
@@ -572,18 +709,31 @@
                     if (dropdownRef.current && !dropdownRef.current.contains(e.target) &&
                         inputRef.current && !inputRef.current.contains(e.target)) {
                         setShowDropdown(false);
+                        setSelectedMedBase(null);
                     }
                 };
                 document.addEventListener('mousedown', handleClickOutside);
                 return () => document.removeEventListener('mousedown', handleClickOutside);
             }, []);
 
-            const handleSelect = (med) => {
-                onSelect(med);
-                setQuery('');
-                setResults([]);
-                setShowDropdown(false);
+            const handleSelectBase = (med) => {
+                const apresentacoes = PSYCH_MEDICATIONS.find(m => m.id === med.baseId);
+                if (apresentacoes && apresentacoes.apresentacoes.length === 1) {
+                    onSelect({ ...med, apresentacao: apresentacoes.apresentacoes[0] });
+                    setQuery(''); setResults([]); setShowDropdown(false); setSelectedMedBase(null);
+                } else {
+                    setSelectedMedBase(med);
+                }
             };
+
+            const handleSelectApresentacao = (med, ap) => {
+                onSelect({ ...med, apresentacao: ap });
+                setQuery(''); setResults([]); setShowDropdown(false); setSelectedMedBase(null);
+            };
+
+            const apList = selectedMedBase
+                ? (PSYCH_MEDICATIONS.find(m => m.id === selectedMedBase.baseId) || {}).apresentacoes || []
+                : [];
 
             return (
                 <div style={{ position: 'relative' }}>
@@ -594,46 +744,52 @@
                         <input
                             ref={inputRef}
                             type="text"
-                            placeholder="Buscar medicamento ANVISA (mín. 3 letras)..."
+                            placeholder="Buscar medicamento psiquiátrico (mín. 2 letras)..."
                             value={query}
-                            onChange={(e) => setQuery(e.target.value)}
+                            onChange={(e) => { setQuery(e.target.value); setSelectedMedBase(null); }}
                             onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
                             className="w-full p-3 pl-10 rounded-xl outline-none text-sm"
                             style={{ border: '1px solid #d2d2d7', color: '#1d1d1f', background: '#fbfbfd' }}
                         />
                     </div>
                     {showDropdown && (
-                        <div
-                            ref={dropdownRef}
-                            style={{
-                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                                background: '#fff', border: '1px solid #d2d2d7', borderRadius: '12px',
-                                marginTop: '4px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                                maxHeight: '220px', overflowY: 'auto'
-                            }}
-                        >
-                            {results.map(med => (
-                                <button
-                                    key={med.id}
-                                    onClick={() => handleSelect(med)}
+                        <div ref={dropdownRef} style={{
+                            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                            background: '#fff', border: '1px solid #d2d2d7', borderRadius: '12px',
+                            marginTop: '4px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                            maxHeight: '300px', overflowY: 'auto'
+                        }}>
+                            {!selectedMedBase ? results.map(med => (
+                                <button key={med.id} onClick={() => handleSelectBase(med)}
                                     className="w-full text-left px-4 py-3 transition-colors"
                                     style={{ borderBottom: '1px solid #f0f0f2', color: '#1d1d1f' }}
                                     onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f7'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                                >
-                                    <div className="flex items-center gap-2">
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <span style={{ color: '#0071e3' }}><Icons.Pill /></span>
-                                        <span className="font-semibold text-sm">{med.principioAtivo}</span>
-                                        <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: '#f5f5f7', color: '#6e6e73' }}>
-                                            {med.nomeComercial}
-                                        </span>
+                                        <span style={{ fontWeight: '600', fontSize: '13px' }}>{med.principioAtivo}</span>
+                                        <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '6px', background: '#f5f5f7', color: '#6e6e73' }}>{med.nomeComercial}</span>
+                                        {med.isControlled && <span style={{ fontSize: '10px', color: '#e34040', fontWeight: '700' }}>● Controlado</span>}
                                     </div>
-                                    <p className="text-xs mt-1" style={{ color: '#86868b', paddingLeft: '24px' }}>
-                                        {med.apresentacao}
-                                        {med.isControlled && <span style={{ color: '#e34040', fontWeight: '600', marginLeft: '8px' }}>Controlado</span>}
-                                    </p>
+                                    <p style={{ fontSize: '10px', color: '#86868b', marginTop: '2px', paddingLeft: '24px' }}>{med.categoria}</p>
                                 </button>
-                            ))}
+                            )) : (
+                                <div>
+                                    <div style={{ padding: '10px 16px', borderBottom: '1px solid #f0f0f2', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <button onClick={() => setSelectedMedBase(null)} style={{ fontSize: '11px', color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer' }}>← Voltar</button>
+                                        <span style={{ fontWeight: '600', fontSize: '13px', color: '#1d1d1f' }}>{selectedMedBase.principioAtivo} — Escolha a apresentação:</span>
+                                    </div>
+                                    {apList.map((ap, i) => (
+                                        <button key={i} onClick={() => handleSelectApresentacao(selectedMedBase, ap)}
+                                            className="w-full text-left px-4 py-2.5 transition-colors text-sm"
+                                            style={{ borderBottom: '1px solid #f0f0f2', color: '#1d1d1f' }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f7ff'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                                            {ap}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -753,6 +909,149 @@
         };
 
         // ========================================
+        // Painel de Histórico do Paciente
+        // ========================================
+        const HistoryPanel = ({ patient, onLoad, onClose }) => {
+            const history = loadPatientHistory(patient);
+            if (!patient.name.trim()) return (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#86868b', fontSize: '13px' }}>
+                    Preencha o nome do paciente para ver o histórico.
+                </div>
+            );
+            return (
+                <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '380px', background: '#fff', boxShadow: '-4px 0 24px rgba(0,0,0,0.10)', zIndex: 200, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #e8e8ed', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <p style={{ fontWeight: '600', fontSize: '15px', color: '#1d1d1f' }}>Histórico — {patient.name}</p>
+                            <p style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>{history.length} prescrição(ões) salva(s)</p>
+                        </div>
+                        <button onClick={onClose} style={{ background: '#f5f5f7', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '16px', color: '#6e6e73' }}>✕</button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+                        {history.length === 0 ? (
+                            <p style={{ textAlign: 'center', color: '#86868b', fontSize: '13px', marginTop: '32px' }}>Nenhuma prescrição salva ainda.</p>
+                        ) : history.map(rx => (
+                            <div key={rx.id} style={{ background: '#f9f9fb', border: '1px solid #e8e8ed', borderRadius: '14px', padding: '14px', marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <span style={{ fontWeight: '600', fontSize: '12px', color: '#1d1d1f' }}>{rx.date}</span>
+                                    <button onClick={() => onLoad(rx)}
+                                        style={{ fontSize: '11px', color: '#0071e3', background: 'none', border: '1px solid #0071e3', borderRadius: '8px', padding: '3px 10px', cursor: 'pointer' }}>
+                                        Carregar
+                                    </button>
+                                </div>
+                                {rx.medications.slice(0,3).map((m,i) => (
+                                    <p key={i} style={{ fontSize: '11px', color: '#424245', marginBottom: '2px' }}>• {m.name}</p>
+                                ))}
+                                {rx.medications.length > 3 && <p style={{ fontSize: '10px', color: '#86868b' }}>+{rx.medications.length - 3} medicamento(s)...</p>}
+                                {rx.freeTexts && rx.freeTexts.length > 0 && <p style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>+ {rx.freeTexts.length} texto(s) livre(s)</p>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // ========================================
+        // Componente Bird ID
+        // ========================================
+        const BirdIDPanel = ({ onSigned, onClose }) => {
+            const [clientId, setClientId] = useState(() => localStorage.getItem('birdid_client_id') || '');
+            const [status, setStatus] = useState('idle'); // idle | connecting | connected | error
+            const [token, setToken] = useState(() => sessionStorage.getItem('birdid_token') || null);
+            const [message, setMessage] = useState('');
+
+            const REDIRECT_URI = window.location.origin + window.location.pathname;
+            const AUTH_URL = 'https://auth.birdid.com.br/auth/realms/birdid-cloud/protocol/openid-connect/auth';
+
+            // Verificar callback OAuth2
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const code = params.get('code');
+                const state = params.get('state');
+                const savedState = sessionStorage.getItem('birdid_state');
+                const verifier = sessionStorage.getItem('birdid_verifier');
+                if (code && state && state === savedState && verifier) {
+                    setStatus('connecting');
+                    const cid = localStorage.getItem('birdid_client_id') || '';
+                    fetch('https://auth.birdid.com.br/auth/realms/birdid-cloud/protocol/openid-connect/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ grant_type:'authorization_code', client_id: cid, redirect_uri: REDIRECT_URI, code, code_verifier: verifier })
+                    }).then(r => r.json()).then(data => {
+                        if (data.access_token) {
+                            sessionStorage.setItem('birdid_token', data.access_token);
+                            setToken(data.access_token);
+                            setStatus('connected');
+                            setMessage('✓ Bird ID conectado com sucesso!');
+                            // Limpar params da URL
+                            window.history.replaceState({}, '', window.location.pathname);
+                        } else {
+                            setStatus('error');
+                            setMessage('Falha ao obter token. Verifique o Client ID.');
+                        }
+                    }).catch(() => { setStatus('error'); setMessage('Erro de conexão com Bird ID.'); });
+                    sessionStorage.removeItem('birdid_state');
+                    sessionStorage.removeItem('birdid_verifier');
+                }
+            }, []);
+
+            const generatePKCE = async () => {
+                const array = new Uint8Array(32);
+                crypto.getRandomValues(array);
+                const verifier = btoa(String.fromCharCode(...array)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+                const encoder = new TextEncoder();
+                const data = encoder.encode(verifier);
+                const digest = await crypto.subtle.digest('SHA-256', data);
+                const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+                return { verifier, challenge };
+            };
+
+            const handleConnect = async () => {
+                if (!clientId.trim()) { setMessage('Informe o Client ID do Bird ID.'); return; }
+                localStorage.setItem('birdid_client_id', clientId);
+                const { verifier, challenge } = await generatePKCE();
+                const state = Math.random().toString(36).slice(2);
+                sessionStorage.setItem('birdid_state', state);
+                sessionStorage.setItem('birdid_verifier', verifier);
+                const url = `${AUTH_URL}?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=openid&state=${state}&code_challenge=${challenge}&code_challenge_method=S256`;
+                window.location.href = url;
+            };
+
+            const handleDisconnect = () => {
+                sessionStorage.removeItem('birdid_token');
+                setToken(null);
+                setStatus('idle');
+                setMessage('');
+            };
+
+            return (
+                <div style={{ padding: '16px', background: '#f0f7ff', borderRadius: '14px', border: '1px solid #bfdbfe', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <p style={{ fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>🔐 Assinatura Bird ID (ICP-Brasil)</p>
+                        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6e6e73', fontSize: '14px' }}>✕</button>
+                    </div>
+                    {token ? (
+                        <div>
+                            <p style={{ fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '8px' }}>✓ Conectado ao Bird ID</p>
+                            <button onClick={handleDisconnect} style={{ fontSize: '11px', color: '#e34040', background: 'none', border: '1px solid #e34040', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', marginRight: '8px' }}>Desconectar</button>
+                            <button onClick={() => { onSigned(); onClose(); }} style={{ fontSize: '11px', color: '#fff', background: '#0071e3', border: 'none', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer' }}>Assinar Documento</button>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <p style={{ fontSize: '11px', color: '#374151' }}>Informe seu Client ID obtido em <strong>birdid.com.br</strong></p>
+                            <input type="text" placeholder="Client ID" value={clientId} onChange={e => setClientId(e.target.value)}
+                                style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '8px', border: '1px solid #93c5fd', outline: 'none', background: '#fff' }} />
+                            <button onClick={handleConnect} style={{ fontSize: '12px', fontWeight: '600', color: '#fff', background: '#1d4ed8', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer' }}>
+                                Conectar com Bird ID →
+                            </button>
+                            {message && <p style={{ fontSize: '11px', color: status === 'error' ? '#e34040' : '#166534' }}>{message}</p>}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // ========================================
         // App Principal
         // ========================================
         const App = () => {
@@ -781,6 +1080,11 @@
             const [separatePrescriptions, setSeparatePrescriptions] = useState(false);
             const [signatureDataUrl, setSignatureDataUrl] = useState(null);
             const [showSignaturePad, setShowSignaturePad] = useState(false);
+            const [showHistory, setShowHistory] = useState(false);
+            const [showBirdID, setShowBirdID] = useState(false);
+            const [birdIdSigned, setBirdIdSigned] = useState(false);
+
+            const hasControlled = medications.some(m => m.isControlled && m.name.trim());
 
             const clinic = CLINICS[selectedClinicId];
 
@@ -830,21 +1134,25 @@
             }, []);
 
             const handlePrint = () => {
+                saveToHistory(patient, medications, freeTexts);
                 window.print();
             };
 
-            // Adicionar medicamento da busca ANVISA
-            const handleAddFromSearch = useCallback((anvisaMed) => {
-                const medName = `${anvisaMed.principioAtivo} (${anvisaMed.nomeComercial}) - ${anvisaMed.apresentacao}`;
-                setMedications(prev => [...prev, {
-                    id: Date.now(),
-                    route: 'Uso Oral',
-                    name: medName,
-                    instructions: '',
-                    isControlled: anvisaMed.isControlled,
-                    hideDate: false,
-                    copies: 1
-                }]);
+            // Adicionar medicamento da busca psiquiátrica
+            const handleAddFromSearch = useCallback((med) => {
+                const medName = `${med.principioAtivo} (${med.nomeComercial}) - ${med.apresentacao}`;
+                // Remove entrada vazia se houver só uma
+                setMedications(prev => {
+                    const withoutEmpty = prev.filter(m => m.name.trim() !== '');
+                    return [...withoutEmpty, { id: Date.now(), route: 'Uso Oral', name: medName, instructions: '', isControlled: med.isControlled, hideDate: false, copies: 1 }];
+                });
+            }, []);
+
+            // Carregar prescrição do histórico
+            const handleLoadFromHistory = useCallback((rx) => {
+                setMedications(rx.medications.length > 0 ? rx.medications.map(m => ({ ...m, id: Date.now() + Math.random() })) : [{ id: Date.now(), route: 'Uso Oral', name: '', instructions: '', isControlled: false, hideDate: false, copies: 1 }]);
+                setFreeTexts((rx.freeTexts || []).map(f => ({ ...f, id: Date.now() + Math.random() })));
+                setShowHistory(false);
             }, []);
 
             // Adicionar template de texto livre
@@ -1015,7 +1323,8 @@
                 const patientSlug = (patient.name || 'paciente').trim().replace(/\s+/g, '_').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 const fileName = `prescricao_${patientSlug}_${dateStr}.pdf`;
                 doc.save(fileName);
-            }, [printPages, doctor, clinic, city, patient, signatureDataUrl]);
+                saveToHistory(patient, medications, freeTexts);
+            }, [printPages, doctor, clinic, city, patient, signatureDataUrl, medications, freeTexts]);
 
             // Descrição de cada página para o banner do preview
             const getPageLabel = (page) => {
@@ -1038,26 +1347,51 @@
                         <div className="w-full md:w-[440px] flex flex-col h-full border-r" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderColor: '#d2d2d7' }}>
 
                             {/* Header */}
-                            <div className="px-6 py-5 flex justify-between items-center" style={{ borderBottom: '1px solid #d2d2d7' }}>
+                            <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid #d2d2d7' }}>
                                 <div>
                                     <h1 className="text-xl font-semibold tracking-tight" style={{ color: '#1d1d1f', letterSpacing: '-0.02em' }}>Prescritor Digital</h1>
                                     <p className="text-xs mt-0.5" style={{ color: '#6e6e73' }}>
                                         Dr. Andrey Rocca — Médico Psiquiatra
                                         {signatureDataUrl && <span style={{ color: '#166534', marginLeft: '6px' }}>✓ Assinado</span>}
+                                        {birdIdSigned && <span style={{ color: '#1d4ed8', marginLeft: '6px' }}>🔐 Bird ID</span>}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setShowDoctorSettings(!showDoctorSettings)}
-                                    className="p-2.5 rounded-full transition-all"
-                                    style={{ background: showDoctorSettings ? '#e8e8ed' : 'transparent', color: '#1d1d1f' }}
-                                    title="Configurar Médico"
-                                >
-                                    <Icons.Settings />
-                                </button>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button onClick={() => setShowHistory(!showHistory)}
+                                        title="Histórico do Paciente"
+                                        style={{ background: showHistory ? '#e8e8ed' : 'transparent', border: '1px solid #d2d2d7', borderRadius: '10px', padding: '6px 10px', cursor: 'pointer', fontSize: '13px', color: '#1d1d1f' }}>
+                                        📋
+                                    </button>
+                                    <button onClick={() => setShowBirdID(!showBirdID)}
+                                        title="Assinatura Bird ID"
+                                        style={{ background: birdIdSigned ? '#dbeafe' : showBirdID ? '#e8e8ed' : 'transparent', border: '1px solid #d2d2d7', borderRadius: '10px', padding: '6px 10px', cursor: 'pointer', fontSize: '13px', color: '#1d4ed8' }}>
+                                        🔐
+                                    </button>
+                                    <button onClick={() => setShowDoctorSettings(!showDoctorSettings)}
+                                        style={{ background: showDoctorSettings ? '#e8e8ed' : 'transparent', border: '1px solid transparent', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#1d1d1f' }}
+                                        title="Configurações">
+                                        <Icons.Settings />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Corpo */}
                             <div className="flex-1 overflow-y-auto px-6 py-5 hide-scrollbar space-y-6">
+
+                                {/* Bird ID Panel */}
+                                {showBirdID && (
+                                    <BirdIDPanel
+                                        onSigned={() => setBirdIdSigned(true)}
+                                        onClose={() => setShowBirdID(false)}
+                                    />
+                                )}
+
+                                {/* Alerta Receita Controlada */}
+                                {hasControlled && (
+                                    <div style={{ padding: '10px 14px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '12px', fontSize: '12px', color: '#9a3412' }}>
+                                        <strong>⚠ Receituário de Controle Especial</strong> — Esta prescrição gerará 1ª e 2ª via automaticamente para o(s) medicamento(s) controlado(s).
+                                    </div>
+                                )}
 
                                 {/* Configurações do Médico */}
                                 {showDoctorSettings && (
@@ -1472,6 +1806,15 @@
                             </div>
                         </div>
                     </div>
+
+                    {/* Painel Histórico */}
+                    {showHistory && (
+                        <HistoryPanel
+                            patient={patient}
+                            onLoad={handleLoadFromHistory}
+                            onClose={() => setShowHistory(false)}
+                        />
+                    )}
 
                     {/* ============================================ */}
                     {/* ÁREA DE IMPRESSÃO — invisível na tela,       */}
