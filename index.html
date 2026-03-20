@@ -454,7 +454,7 @@
         // ========================================
         // Componente de Página de Prescrição (A4)
         // ========================================
-        const PrescriptionPage = ({ meds, freeTexts: pageFreeTexts, isControlled, tipoReceita, via, hideDate, doctor, clinic, city, patient, forPrint, signatureDataUrl, rxId, birdIdSigned }) => {
+        const PrescriptionPage = ({ meds, freeTexts: pageFreeTexts, isControlled, tipoReceita, via, hideDate, doctor, clinic, city, patient, forPrint, signatureDataUrl, rxId, cryptoSig }) => {
             const tipoInfo    = tipoReceita ? TIPO_RECEITA[tipoReceita] : null;
             const headerClass = tipoReceita === 'A' ? 'rx-header-A' : (tipoReceita === 'B1' || tipoReceita === 'B2') ? 'rx-header-B' : (isControlled ? 'rx-header-C' : '');
             const pageExtra   = tipoInfo?.pageClass || '';
@@ -583,7 +583,7 @@
                             </p>
                         </div>
                         {rxId && (
-                            <PrescriptionSeal rxId={rxId} doctor={doctor} patient={patient} date={dateStr} signed={!!signatureDataUrl} birdIdSigned={birdIdSigned} />
+                            <PrescriptionSeal rxId={rxId} doctor={doctor} patient={patient} date={dateStr} signed={!!signatureDataUrl} cryptoSig={cryptoSig} />
                         )}
 
                         {/* Formulários ANVISA — Receita Especial (C1) e Notificações A/B */}
@@ -1113,174 +1113,174 @@
         // ========================================
         // Selo de Assinatura Digital com QR Code
         // ========================================
-        const PrescriptionSeal = ({ rxId, doctor, patient, date, signed, birdIdSigned }) => {
+        const PrescriptionSeal = ({ rxId, doctor, patient, date, signed, cryptoSig }) => {
             const canvasRef = React.useRef(null);
-            const qrText = `RX:${rxId}|DOC:${doctor.name}|CRM:${doctor.crm}|PAC:${patient.name}|DATA:${date}|VER:andrey.prescricao`;
+            // QR contém: ID, médico, CRM, paciente, data e os primeiros 32 chars da assinatura ECDSA
+            const sigSnippet = cryptoSig ? cryptoSig.slice(0, 32) : '';
+            const pubKey     = (localStorage.getItem(CRYPTO_PUB) || '').slice(0, 20);
+            const qrText     = `RX:${rxId}|MD:${doctor.crm}|PAC:${patient.name}|DT:${date}${sigSnippet ? `|SIG:${sigSnippet}` : ''}`;
 
             useEffect(() => {
                 if (canvasRef.current && window.QRCode) {
-                    window.QRCode.toCanvas(canvasRef.current, qrText, { width: 72, margin: 1 }, () => {});
+                    window.QRCode.toCanvas(canvasRef.current, qrText, { width: 76, margin: 1, errorCorrectionLevel: 'M' }, () => {});
                 }
             }, [qrText]);
 
             return (
-                <div className="rx-seal" style={{ marginTop: '12px', fontSize: '9px' }}>
-                    <canvas ref={canvasRef} width={72} height={72} style={{ borderRadius: '4px' }} />
+                <div className="rx-seal" style={{ marginTop: '10px', fontSize: '9px' }}>
+                    <canvas ref={canvasRef} width={76} height={76} style={{ borderRadius: '4px', flexShrink: 0 }} />
                     <div>
-                        <p style={{ fontWeight: '700', fontSize: '10px', color: birdIdSigned ? '#1d4ed8' : '#1d1d1f', marginBottom: '3px' }}>
-                            {birdIdSigned ? '🔐 Assinado Digitalmente — Bird ID (ICP-Brasil)' : signed ? '✍ Assinatura Digital Aplicada' : '⬛ Documento Digital Verificável'}
+                        <p style={{ fontWeight: '700', fontSize: '10px', color: cryptoSig ? '#166534' : '#1d1d1f', marginBottom: '4px' }}>
+                            {cryptoSig ? '🔏 Assinado Digitalmente (ECDSA P-256)' : signed ? '✍ Assinatura Manual Aplicada' : '⬛ Documento Verificável'}
                         </p>
-                        <p style={{ color: '#6e6e73' }}>ID Prescrição: <strong>{rxId}</strong></p>
-                        <p style={{ color: '#6e6e73' }}>Médico: {doctor.name} | {doctor.crm}</p>
-                        <p style={{ color: '#6e6e73' }}>Emitido em: {date}</p>
-                        <p style={{ color: '#86868b', marginTop: '2px' }}>Escaneie o QR Code para verificar autenticidade</p>
+                        <p style={{ color: '#6e6e73' }}>ID: <strong style={{ fontFamily: 'monospace' }}>{rxId}</strong></p>
+                        <p style={{ color: '#6e6e73' }}>{doctor.name} — {doctor.crm}</p>
+                        <p style={{ color: '#6e6e73' }}>Paciente: {patient.name || '—'}</p>
+                        <p style={{ color: '#6e6e73' }}>Data: {date}</p>
+                        {cryptoSig && <p style={{ color: '#166534', marginTop: '2px', fontFamily: 'monospace', fontSize: '8px' }}>SIG: {cryptoSig.slice(0,24)}…</p>}
+                        <p style={{ color: '#9ca3af', marginTop: '3px' }}>QR Code para verificação de autenticidade</p>
                     </div>
                 </div>
             );
         };
 
         // ========================================
-        // Componente Bird ID — OAuth2 PKCE via iframe proxy
+        // Assinatura Digital — Web Crypto API (ECDSA P-256)
+        // Sem servidor, sem cadastro externo. Funciona offline.
         // ========================================
-        const BirdIDPanel = ({ onSigned, onClose, rxId, prescriptionText }) => {
-            const [clientId, setClientId] = useState(() => localStorage.getItem('birdid_client_id') || '');
-            const [token, setToken]       = useState(() => sessionStorage.getItem('birdid_token') || null);
-            const [status, setStatus]     = useState('idle');
-            const [message, setMessage]   = useState('');
+        const CRYPTO_KEY = 'rx_privkey_enc';
+        const CRYPTO_PUB = 'rx_pubkey_b64';
 
-            const REDIRECT_URI = window.location.href.split('?')[0];
-            const AUTH_URL     = 'https://auth.birdid.com.br/auth/realms/birdid-cloud/protocol/openid-connect/auth';
-            const TOKEN_URL    = 'https://auth.birdid.com.br/auth/realms/birdid-cloud/protocol/openid-connect/token';
+        // Deriva chave AES-GCM a partir do PIN (PBKDF2)
+        const deriveAesKey = async (pin, salt) => {
+            const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+            return crypto.subtle.deriveKey(
+                { name:'PBKDF2', salt, iterations:200000, hash:'SHA-256' },
+                base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
+            );
+        };
 
-            // Processar callback OAuth2 que chega nos params da URL
-            useEffect(() => {
-                const params  = new URLSearchParams(window.location.search);
-                const code    = params.get('birdid_code');
-                const state   = params.get('birdid_state');
-                const saved   = sessionStorage.getItem('birdid_state');
-                const verifier= sessionStorage.getItem('birdid_verifier');
-                const cid     = localStorage.getItem('birdid_client_id') || '';
-                if (code && state === saved && verifier && cid) {
-                    setStatus('connecting');
-                    setMessage('Trocando código pelo token…');
-                    fetch(TOKEN_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            grant_type: 'authorization_code', client_id: cid,
-                            redirect_uri: REDIRECT_URI, code, code_verifier: verifier
-                        })
-                    }).then(r => r.json()).then(data => {
-                        sessionStorage.removeItem('birdid_state');
-                        sessionStorage.removeItem('birdid_verifier');
-                        window.history.replaceState({}, '', REDIRECT_URI);
-                        if (data.access_token) {
-                            sessionStorage.setItem('birdid_token', data.access_token);
-                            setToken(data.access_token);
-                            setStatus('connected');
-                            setMessage('✓ Autenticado com sucesso! Clique em "Assinar" para assinar o documento.');
-                        } else {
-                            setStatus('error');
-                            setMessage(`Erro: ${data.error_description || 'token não recebido'}`);
-                        }
-                    }).catch(e => {
-                        setStatus('error');
-                        setMessage('Erro de rede ao trocar token. O Bird ID exige CORS habilitado ou servidor proxy.');
-                    });
-                }
-            }, []);
+        // Gera par de chaves ECDSA P-256
+        const generateKeyPair = async (pin) => {
+            const kp = await crypto.subtle.generateKey({ name:'ECDSA', namedCurve:'P-256' }, true, ['sign','verify']);
+            // Exporta e cifra chave privada com PIN
+            const privRaw = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv   = crypto.getRandomValues(new Uint8Array(12));
+            const aes  = await deriveAesKey(pin, salt);
+            const enc  = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, aes, privRaw);
+            // Armazena privada cifrada + pública em claro
+            const stored = { salt: btoa(String.fromCharCode(...salt)), iv: btoa(String.fromCharCode(...iv)), enc: btoa(String.fromCharCode(...new Uint8Array(enc))) };
+            localStorage.setItem(CRYPTO_KEY, JSON.stringify(stored));
+            const pubRaw = await crypto.subtle.exportKey('spki', kp.publicKey);
+            const pubB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
+            localStorage.setItem(CRYPTO_PUB, pubB64);
+            return pubB64;
+        };
 
-            const generatePKCE = async () => {
-                const arr = new Uint8Array(32);
-                crypto.getRandomValues(arr);
-                const verifier  = btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-                const encoded   = new TextEncoder().encode(verifier);
-                const digest    = await crypto.subtle.digest('SHA-256', encoded);
-                const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-                return { verifier, challenge };
-            };
+        // Decifra e importa chave privada
+        const loadPrivKey = async (pin) => {
+            const stored = JSON.parse(localStorage.getItem(CRYPTO_KEY) || 'null');
+            if (!stored) throw new Error('Chave não encontrada. Configure a assinatura primeiro.');
+            const salt = Uint8Array.from(atob(stored.salt), c => c.charCodeAt(0));
+            const iv   = Uint8Array.from(atob(stored.iv),   c => c.charCodeAt(0));
+            const enc  = Uint8Array.from(atob(stored.enc),  c => c.charCodeAt(0));
+            const aes  = await deriveAesKey(pin, salt);
+            const privRaw = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, aes, enc);
+            return crypto.subtle.importKey('pkcs8', privRaw, { name:'ECDSA', namedCurve:'P-256' }, false, ['sign']);
+        };
 
-            const handleConnect = async () => {
-                if (!clientId.trim()) { setMessage('Informe o Client ID.'); return; }
-                localStorage.setItem('birdid_client_id', clientId);
-                const { verifier, challenge } = await generatePKCE();
-                const state = Math.random().toString(36).slice(2);
-                sessionStorage.setItem('birdid_state', state);
-                sessionStorage.setItem('birdid_verifier', verifier);
-                // Parâmetros com prefixo birdid_ para não conflitar com outros sistemas
-                const cbUrl = `${REDIRECT_URI}?birdid_code=CODE&birdid_state=${state}`;
-                const url = `${AUTH_URL}?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=openid+sign&state=${state}&code_challenge=${challenge}&code_challenge_method=S256`;
-                window.location.href = url;
+        // Assina texto → retorna assinatura base64 (primeiros 24 chars para QR)
+        const signText = async (text, pin) => {
+            const key  = await loadPrivKey(pin);
+            const data = new TextEncoder().encode(text);
+            const sig  = await crypto.subtle.sign({ name:'ECDSA', hash:'SHA-256' }, key, data);
+            return btoa(String.fromCharCode(...new Uint8Array(sig)));
+        };
+
+        const CryptoSignaturePanel = ({ onSigned, onClose, prescriptionText }) => {
+            const hasKey = !!localStorage.getItem(CRYPTO_KEY);
+            const [mode,    setMode]    = useState(hasKey ? 'sign' : 'setup');
+            const [pin,     setPin]     = useState('');
+            const [pin2,    setPin2]    = useState('');
+            const [status,  setStatus]  = useState('idle');
+            const [msg,     setMsg]     = useState('');
+
+            const handleSetup = async () => {
+                if (pin.length < 4)       { setMsg('PIN deve ter no mínimo 4 dígitos.'); return; }
+                if (pin !== pin2)         { setMsg('Os PINs não coincidem.'); return; }
+                setStatus('working'); setMsg('Gerando chave criptográfica…');
+                try {
+                    await generateKeyPair(pin);
+                    setStatus('ok'); setMsg('✓ Chave gerada! Agora clique em Assinar.');
+                    setMode('sign'); setPin(''); setPin2('');
+                } catch(e) { setStatus('error'); setMsg('Erro ao gerar chave: ' + e.message); }
             };
 
             const handleSign = async () => {
-                if (!token) return;
-                // Assinar o texto da prescrição via API Bird ID
-                setStatus('signing');
-                setMessage('Enviando documento para assinatura Bird ID…');
+                if (!pin) { setMsg('Digite o PIN.'); return; }
+                setStatus('working'); setMsg('Assinando…');
                 try {
-                    const encoder = new TextEncoder();
-                    const data    = encoder.encode(prescriptionText);
-                    const hashBuf = await crypto.subtle.digest('SHA-256', data);
-                    const hash    = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
-                    // Chamar API de assinatura Bird ID
-                    const res = await fetch('https://api.birdid.com.br/v0/oauth/sign', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ hash, hash_algorithm: 'SHA256', alias: rxId })
-                    });
-                    if (res.ok) {
-                        setStatus('signed');
-                        setMessage('✓ Documento assinado com ICP-Brasil via Bird ID!');
-                        onSigned();
-                    } else {
-                        const err = await res.json().catch(() => ({}));
-                        setStatus('error');
-                        setMessage(`Erro na assinatura: ${err.message || res.status}`);
-                    }
-                } catch (e) {
+                    const sig = await signText(prescriptionText, pin);
+                    setStatus('ok');
+                    setMsg('✓ Prescrição assinada digitalmente!');
+                    onSigned(sig);
+                } catch(e) {
                     setStatus('error');
-                    setMessage('Erro de conexão. O Bird ID pode exigir servidor proxy para esta operação.');
+                    setMsg(e.message.includes('decrypt') ? 'PIN incorreto.' : 'Erro: ' + e.message);
                 }
             };
 
-            const handleDisconnect = () => {
-                sessionStorage.removeItem('birdid_token');
-                setToken(null); setStatus('idle'); setMessage('');
+            const handleReset = () => {
+                if (!window.confirm('Apagar chave atual e criar uma nova? A chave atual não poderá ser recuperada.')) return;
+                localStorage.removeItem(CRYPTO_KEY); localStorage.removeItem(CRYPTO_PUB);
+                setMode('setup'); setPin(''); setPin2(''); setStatus('idle'); setMsg('');
             };
 
             return (
-                <div style={{ padding: '16px', background: '#f0f7ff', borderRadius: '14px', border: '1px solid #bfdbfe', marginTop: '8px' }}>
+                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '14px', border: '1px solid #bbf7d0', marginTop: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <p style={{ fontWeight: '700', fontSize: '13px', color: '#1e40af' }}>🔐 Assinatura Bird ID — ICP-Brasil</p>
+                        <p style={{ fontWeight: '700', fontSize: '13px', color: '#166534' }}>🔏 Assinatura Digital (ECDSA P-256)</p>
                         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6e6e73', fontSize: '16px' }}>✕</button>
                     </div>
-                    {token ? (
+
+                    {mode === 'setup' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <p style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>✓ Autenticado no Bird ID</p>
-                            {status !== 'signed' && (
-                                <button onClick={handleSign} disabled={status === 'signing'}
-                                    style={{ fontSize: '13px', fontWeight: '600', color: '#fff', background: status === 'signing' ? '#93c5fd' : '#1d4ed8', border: 'none', borderRadius: '10px', padding: '10px', cursor: 'pointer' }}>
-                                    {status === 'signing' ? 'Assinando…' : '🔏 Assinar Prescrição com Bird ID'}
-                                </button>
-                            )}
-                            {message && <p style={{ fontSize: '11px', color: status === 'error' ? '#e34040' : status === 'signed' ? '#166534' : '#1e40af' }}>{message}</p>}
-                            <button onClick={handleDisconnect} style={{ fontSize: '11px', color: '#e34040', background: 'none', border: '1px solid #fca5a5', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', alignSelf: 'flex-start' }}>Desconectar</button>
+                            <p style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5' }}>
+                                Crie um <strong>PIN</strong> para proteger sua chave digital.<br/>
+                                A chave é gerada e salva <strong>só neste dispositivo</strong> — sem servidores externos.
+                            </p>
+                            <input type="password" placeholder="Criar PIN (mín. 4 dígitos)" value={pin}
+                                onChange={e => setPin(e.target.value.replace(/\D/g,''))} maxLength={8}
+                                style={{ fontSize: '14px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #6ee7b7', outline: 'none', letterSpacing: '4px', textAlign: 'center' }} />
+                            <input type="password" placeholder="Confirmar PIN" value={pin2}
+                                onChange={e => setPin2(e.target.value.replace(/\D/g,''))} maxLength={8}
+                                style={{ fontSize: '14px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #6ee7b7', outline: 'none', letterSpacing: '4px', textAlign: 'center' }} />
+                            <button onClick={handleSetup} disabled={status === 'working'}
+                                style={{ fontWeight: '700', color: '#fff', background: '#16a34a', border: 'none', borderRadius: '10px', padding: '10px', cursor: 'pointer', fontSize: '13px' }}>
+                                {status === 'working' ? 'Gerando chave…' : 'Gerar Chave e Configurar'}
+                            </button>
+                            {msg && <p style={{ fontSize: '11px', color: status === 'error' ? '#e34040' : '#166534' }}>{msg}</p>}
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <p style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5' }}>
-                                Entre no <strong>birdid.com.br</strong>, crie um aplicativo OAuth2 e cole o <strong>Client ID</strong> abaixo.<br/>
-                                <span style={{ color: '#6b7280' }}>Redirect URI a configurar: <code style={{ fontSize: '10px', background: '#e0f2fe', padding: '1px 4px', borderRadius: '4px' }}>{REDIRECT_URI}</code></span>
-                            </p>
-                            <input type="text" placeholder="Client ID do Bird ID" value={clientId} onChange={e => setClientId(e.target.value)}
-                                style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '8px', border: '1px solid #93c5fd', outline: 'none', background: '#fff' }} />
-                            <button onClick={handleConnect}
-                                style={{ fontSize: '12px', fontWeight: '600', color: '#fff', background: '#1d4ed8', border: 'none', borderRadius: '10px', padding: '10px', cursor: 'pointer' }}>
-                                Autenticar com Bird ID →
+                            {status !== 'ok' && <p style={{ fontSize: '11px', color: '#374151' }}>Digite seu PIN para assinar esta prescrição:</p>}
+                            {status !== 'ok' && (
+                                <input type="password" placeholder="PIN" value={pin}
+                                    onChange={e => setPin(e.target.value.replace(/\D/g,''))} maxLength={8}
+                                    onKeyDown={e => e.key === 'Enter' && handleSign()}
+                                    style={{ fontSize: '18px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #6ee7b7', outline: 'none', letterSpacing: '6px', textAlign: 'center', width: '120px', alignSelf: 'center' }} />
+                            )}
+                            {status !== 'ok' && (
+                                <button onClick={handleSign} disabled={status === 'working'}
+                                    style={{ fontWeight: '700', color: '#fff', background: '#16a34a', border: 'none', borderRadius: '10px', padding: '10px', cursor: 'pointer', fontSize: '13px' }}>
+                                    {status === 'working' ? 'Assinando…' : '🔏 Assinar Prescrição'}
+                                </button>
+                            )}
+                            {msg && <p style={{ fontSize: '11px', color: status === 'error' ? '#e34040' : '#166534', fontWeight: status === 'ok' ? '600' : '400' }}>{msg}</p>}
+                            <button onClick={handleReset} style={{ fontSize: '10px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', marginTop: '4px' }}>
+                                Redefinir chave (novo dispositivo)
                             </button>
-                            {message && <p style={{ fontSize: '11px', color: status === 'error' ? '#e34040' : '#374151' }}>{message}</p>}
-                            {status === 'connecting' && <p style={{ fontSize: '11px', color: '#1e40af' }}>Processando autenticação…</p>}
                         </div>
                     )}
                 </div>
@@ -1319,6 +1319,7 @@
             const [showHistory, setShowHistory] = useState(false);
             const [showBirdID, setShowBirdID] = useState(false);
             const [birdIdSigned, setBirdIdSigned] = useState(false);
+            const [cryptoSignature, setCryptoSignature] = useState(null); // base64 da assinatura ECDSA
             const [rxId] = useState(() => `RX${Date.now().toString(36).toUpperCase()}`);
 
             const hasControlled   = medications.some(m => m.isControlled && m.name.trim());
@@ -1595,8 +1596,8 @@
                                     <h1 className="text-xl font-semibold tracking-tight" style={{ color: '#1d1d1f', letterSpacing: '-0.02em' }}>Prescritor Digital</h1>
                                     <p className="text-xs mt-0.5" style={{ color: '#6e6e73' }}>
                                         Dr. Andrey Rocca — Médico Psiquiatra
-                                        {signatureDataUrl && <span style={{ color: '#166534', marginLeft: '6px' }}>✓ Assinado</span>}
-                                        {birdIdSigned && <span style={{ color: '#1d4ed8', marginLeft: '6px' }}>🔐 Bird ID</span>}
+                                        {signatureDataUrl && !cryptoSignature && <span style={{ color: '#6b7280', marginLeft: '6px' }}>✍ Assinatura manual</span>}
+                                        {cryptoSignature && <span style={{ color: '#166534', marginLeft: '6px' }}>🔏 Assinado digitalmente</span>}
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -1606,9 +1607,9 @@
                                         📋
                                     </button>
                                     <button onClick={() => setShowBirdID(!showBirdID)}
-                                        title="Assinatura Bird ID"
-                                        style={{ background: birdIdSigned ? '#dbeafe' : showBirdID ? '#e8e8ed' : 'transparent', border: '1px solid #d2d2d7', borderRadius: '10px', padding: '6px 10px', cursor: 'pointer', fontSize: '13px', color: '#1d4ed8' }}>
-                                        🔐
+                                        title="Assinatura Digital"
+                                        style={{ background: cryptoSignature ? '#dcfce7' : showBirdID ? '#e8e8ed' : 'transparent', border: `1px solid ${cryptoSignature ? '#16a34a' : '#d2d2d7'}`, borderRadius: '10px', padding: '6px 10px', cursor: 'pointer', fontSize: '13px', color: cryptoSignature ? '#16a34a' : '#374151' }}>
+                                        🔏
                                     </button>
                                     <button onClick={() => setShowDoctorSettings(!showDoctorSettings)}
                                         style={{ background: showDoctorSettings ? '#e8e8ed' : 'transparent', border: '1px solid transparent', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#1d1d1f' }}
@@ -1621,12 +1622,11 @@
                             {/* Corpo */}
                             <div className="flex-1 overflow-y-auto px-6 py-5 hide-scrollbar space-y-6">
 
-                                {/* Bird ID Panel */}
+                                {/* Painel Assinatura Digital */}
                                 {showBirdID && (
-                                    <BirdIDPanel
-                                        onSigned={() => { setBirdIdSigned(true); setShowBirdID(false); }}
+                                    <CryptoSignaturePanel
+                                        onSigned={(sig) => { setCryptoSignature(sig); setBirdIdSigned(true); setShowBirdID(false); }}
                                         onClose={() => setShowBirdID(false)}
-                                        rxId={rxId}
                                         prescriptionText={prescriptionText}
                                     />
                                 )}
@@ -2060,7 +2060,7 @@
                                             forPrint={false}
                                             signatureDataUrl={signatureDataUrl}
                                             rxId={rxId}
-                                            birdIdSigned={birdIdSigned}
+                                            cryptoSig={cryptoSignature}
                                         />
                                     </div>
                                 ))}
@@ -2098,7 +2098,7 @@
                                 signatureDataUrl={signatureDataUrl}
                                 tipoReceita={page.tipoReceita}
                                 rxId={rxId}
-                                birdIdSigned={birdIdSigned}
+                                cryptoSig={cryptoSignature}
                             />
                         ))}
                     </div>
